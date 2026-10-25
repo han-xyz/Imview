@@ -1238,7 +1238,7 @@
                                         
                                         <!-- NPC Database Actions -->
                                         <StackPanel Margin="0,8,0,0" IsVisible="{Binding IsSelectedObjectNpc}">
-                                            <TextBlock Text="NPC Database Actions" FontSize="11" FontWeight="Bold" 
+                                            <TextBlock Text="NPC Data Pack Actions" FontSize="11" FontWeight="Bold" 
                                                      Foreground="#4CAF50" Margin="0,0,0,8"/>
 
                                             <!-- Actions only when DB is available -->
@@ -1250,7 +1250,7 @@
                                                         Foreground="White"
                                                         FontWeight="Bold"
                                                         Margin="0,0,8,0"
-                                                        ToolTip.Tip="Edit this NPC's inventory in the world database">
+                                                        ToolTip.Tip="Edit this NPC's inventory in the data pack">
                                                     <Button.Styles>
                                                         <Style Selector="Button:pointerover">
                                                             <Setter Property="Background" Value="#45A049"/>
@@ -1263,7 +1263,7 @@
                                                         Background="#2196F3"
                                                         Foreground="White"
                                                         FontWeight="Bold"
-                                                        ToolTip.Tip="Edit this NPC's spell inventory in the world database">
+                                                        ToolTip.Tip="Edit this NPC's spell inventory in the data pack">
                                                     <Button.Styles>
                                                         <Style Selector="Button:pointerover">
                                                             <Setter Property="Background" Value="#1976D2"/>

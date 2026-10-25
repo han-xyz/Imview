@@ -22,32 +22,40 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Imview.Core.Database.Collections;
+using Imview.Core.Data;
 using Imview.Core.Database.Models;
 
 namespace Imview.Core.Services;
 
 public class DropTableService {
 
+    private const string LegacyIdPrefix = "droptables/";
+
     public async Task<List<DropTable>> GetAllDropTablesAsync() {
-        return await DropTableCollection.GetAllDropTablesAsync();
+        var tables = await WorldStoreProvider.Current.GetAllAsync<DropTable>();
+        return tables.OrderBy(dt => dt.Name, StringComparer.OrdinalIgnoreCase).Select(WorldRecordCopy.Detached).ToList();
     }
 
+    /// <summary>
+    /// Gets a copy of a drop table by name; a RavenDB id (<c>droptables/&lt;name&gt;</c>) is accepted too
+    /// </summary>
     public async Task<DropTable?> GetDropTableAsync(string name) {
         if (string.IsNullOrWhiteSpace(name)) {
             return null;
         }
 
-        return await DropTableCollection.GetDropTableByNameAsync(name);
+        var table = await WorldStoreProvider.Current.GetAsync<DropTable>(NameOf(name));
+        return table == null ? null : WorldRecordCopy.Detached(table);
     }
 
+    /// <returns>The new table's name</returns>
     public async Task<string?> CreateDropTableAsync(string name, string description = "") {
         if (string.IsNullOrWhiteSpace(name)) {
             throw new ArgumentException("Drop table name cannot be empty.", nameof(name));
         }
 
-        var exists = await DropTableCollection.DropTableExistsAsync(name);
-        if (exists) {
+        var store = WorldStoreProvider.Current;
+        if (await store.GetAsync<DropTable>(name) != null) {
             throw new InvalidOperationException($"Drop table '{name}' already exists.");
         }
 
@@ -66,9 +74,13 @@ public class DropTableService {
             Items = new List<DropItem>()
         };
 
-        return await DropTableCollection.SaveDropTableAsync(dropTable);
+        await store.SaveAsync(dropTable);
+        return dropTable.Name;
     }
 
+    /// <summary>
+    /// Saves a copy of the drop table, replacing the stored table with the same name
+    /// </summary>
     public async Task<bool> UpdateDropTableAsync(DropTable dropTable) {
         if (dropTable == null) {
             throw new ArgumentNullException(nameof(dropTable));
@@ -78,26 +90,43 @@ public class DropTableService {
             throw new ArgumentException("Drop table name cannot be empty.", nameof(dropTable));
         }
 
-        var result = await DropTableCollection.SaveDropTableAsync(dropTable);
-        
-        return result != null;
+        var store = WorldStoreProvider.Current;
+        if (await store.GetAsync<DropTable>(dropTable.Name) == null) {
+            dropTable.CreatedAt = DateTime.UtcNow;
+            dropTable.CreatedBy = Environment.UserName;
+        }
+
+        dropTable.ModifiedAt = DateTime.UtcNow;
+        dropTable.ModifiedBy = Environment.UserName;
+        await store.SaveAsync(WorldRecordCopy.Detached(dropTable));
+        return true;
     }
 
+    /// <summary>
+    /// Deletes a drop table by name; a RavenDB id (<c>droptables/&lt;name&gt;</c>) is accepted too
+    /// </summary>
+    /// <returns>False if no table has that name</returns>
     public async Task<bool> DeleteDropTableAsync(string name) {
         if (string.IsNullOrWhiteSpace(name)) {
             return false;
         }
 
-        var id = $"droptables/{name.ToLowerInvariant()}";
-        return await DropTableCollection.DeleteDropTableAsync(id);
+        var store = WorldStoreProvider.Current;
+        if (await store.GetAsync<DropTable>(NameOf(name)) == null) {
+            return false;
+        }
+
+        await store.DeleteAsync<DropTable>(NameOf(name));
+        return true;
     }
 
     public async Task<List<DropTable>> SearchDropTablesAsync(string searchTerm) {
+        var all = await GetAllDropTablesAsync();
         if (string.IsNullOrWhiteSpace(searchTerm)) {
-            return await GetAllDropTablesAsync();
+            return all;
         }
 
-        return await DropTableCollection.SearchDropTablesAsync(searchTerm);
+        return all.Where(dt => dt.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)).ToList();
     }
 
     public void AddItemToDropTable(DropTable dropTable, string itemId, string itemName, string notes = "") {
@@ -202,4 +231,7 @@ public class DropTableService {
 
         return errors.Count == 0;
     }
+
+    private static string NameOf(string nameOrId)
+        => nameOrId.StartsWith(LegacyIdPrefix, StringComparison.OrdinalIgnoreCase) ? nameOrId[LegacyIdPrefix.Length..] : nameOrId;
 }

@@ -26,7 +26,7 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Imview.Core.Common.Constants;
-using Imview.Core.Database;
+using Imview.Core.Data;
 using Imview.Core.Models;
 using Imview.Core.Services;
 
@@ -102,7 +102,7 @@ public class CreatureDeckEditor : Window
 
         _saveButton = new Button
         {
-            Content = "Save to Database",
+            Content = "Save to Data Pack",
             Height = 35,
             Width = 140,
             HorizontalAlignment = HorizontalAlignment.Left,
@@ -182,14 +182,14 @@ public class CreatureDeckEditor : Window
                 {
                     new TextBlock
                     {
-                        Text = "DATABASE EDITING AUTHORITY",
+                        Text = "DATA PACK EDITING AUTHORITY",
                         FontWeight = FontWeight.Bold,
                         Foreground = Brushes.Yellow,
                         HorizontalAlignment = HorizontalAlignment.Center
                     },
                     new TextBlock
                     {
-                        Text = "You are authorized to edit world database creature spell deck data.",
+                        Text = "You are authorized to edit data pack creature spell deck data.",
                         Foreground = Brushes.White,
                         HorizontalAlignment = HorizontalAlignment.Center,
                         Margin = new Avalonia.Thickness(0, 4, 0, 0)
@@ -351,10 +351,9 @@ public class CreatureDeckEditor : Window
     {
         try
         {
-            // Check database connection
-            if (WorldDatabase.Instance.Store == null)
+            if (!await DataPack.IsLoadedAsync())
             {
-                MessageService.Error("Database connection not available. Please ensure your certificate is configured and the database is accessible.").Send();
+                MessageService.Error("Data pack not available. Please ensure a data pack folder is configured and accessible.").Send();
                 return;
             }
 
@@ -366,7 +365,7 @@ public class CreatureDeckEditor : Window
             };
 
             // Show saving progress
-            MessageService.Info("Saving creature deck to database...").Send();
+            MessageService.Info("Saving creature deck to data pack...").Send();
 
             // Save to database
             var success = await CreatureDeckService.SaveCreatureDeckAsync(deck);
@@ -374,17 +373,17 @@ public class CreatureDeckEditor : Window
             if (success)
             {
                 WasSaved = true;
-                MessageService.Info($"Creature deck saved successfully to database.\n\nCreature: {_creatureName}\nDeck: {_deckName}\nSpells: {_spellTemplateIds.Count}").Send();
+                MessageService.Info($"Creature deck saved successfully to data pack.\n\nCreature: {_creatureName}\nDeck: {_deckName}\nSpells: {_spellTemplateIds.Count}").Send();
                 Close();
             }
             else
             {
-                MessageService.Error("Failed to save creature deck to database.").Send();
+                MessageService.Error("Failed to save creature deck to data pack.").Send();
             }
         }
         catch (Exception ex)
         {
-            MessageService.Error($"Failed to save creature deck to database: {ex.Message}").Send();
+            MessageService.Error($"Failed to save creature deck to data pack: {ex.Message}").Send();
         }
     }
 

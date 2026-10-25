@@ -30,7 +30,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
-using Imview.Core.Database;
+using Imview.Core.Data;
 
 namespace Imview.Core.Controls;
 
@@ -111,7 +111,7 @@ public class NpcInventoryEditor : EditorWindowBase<NpcInventory>
 
         _saveButton = new Button
         {
-            Content = "Save to Database",
+            Content = "Save to Data Pack",
             Height = 35,
             Width = 140,
             HorizontalAlignment = HorizontalAlignment.Left,
@@ -180,14 +180,14 @@ public class NpcInventoryEditor : EditorWindowBase<NpcInventory>
                 {
                     new TextBlock
                     {
-                        Text = "DATABASE EDITING AUTHORITY",
+                        Text = "DATA PACK EDITING AUTHORITY",
                         FontWeight = FontWeight.Bold,
                         Foreground = Brushes.Yellow,
                         HorizontalAlignment = HorizontalAlignment.Center
                     },
                     new TextBlock
                     {
-                        Text = "You are authorized to edit world database NPC inventory data.",
+                        Text = "You are authorized to edit data pack NPC inventory data.",
                         Foreground = Brushes.White,
                         HorizontalAlignment = HorizontalAlignment.Center,
                         Margin = new Thickness(0, 4, 0, 0)
@@ -307,10 +307,9 @@ public class NpcInventoryEditor : EditorWindowBase<NpcInventory>
     {
         try
         {
-            // Check database connection
-            if (WorldDatabase.Instance.Store == null)
+            if (!await DataPack.IsLoadedAsync())
             {
-                MessageService.Error("Database connection not available. Please ensure your certificate is configured and the database is accessible.").Send();
+                MessageService.Error("Data pack not available. Please ensure a data pack folder is configured and accessible.").Send();
                 return;
             }
 
@@ -318,7 +317,7 @@ public class NpcInventoryEditor : EditorWindowBase<NpcInventory>
             _npcInventory.Inventory = _inventoryItems.ToList();
 
             // Show saving progress
-            MessageService.Info("Saving NPC inventory to database...").Send();
+            MessageService.Info("Saving NPC inventory to data pack...").Send();
 
             // Save to database
             var success = await NpcInventoryService.SaveNpcInventoryAsync(_npcInventory);
@@ -326,17 +325,17 @@ public class NpcInventoryEditor : EditorWindowBase<NpcInventory>
             if (success)
             {
                 WasSaved = true;
-                MessageService.Info($"NPC inventory saved successfully to database.\n\nNPC: {_npcName}\nTemplate ID: {_templateId}\nItems: {_inventoryItems.Count}").Send();
+                MessageService.Info($"NPC inventory saved successfully to data pack.\n\nNPC: {_npcName}\nTemplate ID: {_templateId}\nItems: {_inventoryItems.Count}").Send();
                 Close();
             }
             else
             {
-                MessageService.Error("Failed to save NPC inventory to database.").Send();
+                MessageService.Error("Failed to save NPC inventory to data pack.").Send();
             }
         }
         catch (Exception ex)
         {
-            MessageService.Error($"Failed to save NPC inventory to database: {ex.Message}").Send();
+            MessageService.Error($"Failed to save NPC inventory to data pack: {ex.Message}").Send();
         }
     }
 

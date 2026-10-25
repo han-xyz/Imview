@@ -245,7 +245,7 @@ public class DropTableEditorViewModel : ViewModelBase {
                         StatusMessage = $"Drop table '{dialog.TableName}' created successfully.";
                         await LoadDropTablesAsync();
                         
-                        var newTable = DropTables.FirstOrDefault(t => t.Id == id);
+                        var newTable = DropTables.FirstOrDefault(t => t.Name == id);
                         if (newTable != null) {
                             SelectedDropTable = newTable;
                         }

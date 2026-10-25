@@ -46,6 +46,7 @@ using Imcodec.BCD;
 using BcdGeomParams = Imcodec.BCD.GeomParams;
 using WizardTea.Core;
 using Imview.PacketReader.Services;
+using Imview.Core.Data;
 using Imview.Core.Database;
 using Imview.Core.Database.Services;
 using Imview.Core.Controls;
@@ -1705,31 +1706,13 @@ public void SetScrollViewer(ScrollViewer scrollViewer)
     {
         try
         {
-            // Check certificate presence
-            var certPathSetting = Imview.Core.Common.ConfigurationManager.Settings["Database.WorldDatabaseCertificatePath"].AsString();
-            bool hasCert = false;
-            try
-            {
-                if (!string.IsNullOrWhiteSpace(certPathSetting))
-                {
-                    var absolutePath = System.IO.Path.GetFullPath(certPathSetting);
-                    hasCert = System.IO.File.Exists(absolutePath);
-                }
-            }
-            catch { hasCert = false; }
-
-            // Test connection
-            var connected = await Imview.Core.Services.DatabaseConfigService.TestDatabaseConnectionAsync();
-
-            IsWorldDatabaseReady = hasCert && connected;
-            WorldDatabaseStatusText = IsWorldDatabaseReady
-                ? string.Empty
-                : (hasCert ? "Database could not be reached." : "Missing worlddata certificate.");
+            IsWorldDatabaseReady = await DataPack.IsLoadedAsync();
+            WorldDatabaseStatusText = IsWorldDatabaseReady ? string.Empty : "No data pack folder is set, or the folder does not exist.";
         }
         catch
         {
             IsWorldDatabaseReady = false;
-            WorldDatabaseStatusText = "Database could not be reached.";
+            WorldDatabaseStatusText = "Data pack could not be loaded.";
         }
     }
 
@@ -1783,10 +1766,9 @@ public void SetScrollViewer(ScrollViewer scrollViewer)
                 return;
             }
 
-            // Check database connection
-            if (WorldDatabase.Instance.Store == null)
+            if (!await DataPack.IsLoadedAsync())
             {
-                MessageService.Error("Database connection not available. Please ensure your certificate is configured and the database is accessible.").Send();
+                MessageService.Error("Data pack not available. Please ensure a data pack folder is configured and accessible.").Send();
                 return;
             }
 
@@ -1818,7 +1800,7 @@ public void SetScrollViewer(ScrollViewer scrollViewer)
             // Show success message if saved
             if (editor.WasSaved)
             {
-                MessageService.Info($"NPC inventory for {npcName} has been updated in the database.").Send();
+                MessageService.Info($"NPC inventory for {npcName} has been updated in the data pack.").Send();
                 
                 // Update shopkeeper flag for this NPC
                 await UpdateShopkeeperFlagForNpc(templateId);
@@ -1846,10 +1828,9 @@ public void SetScrollViewer(ScrollViewer scrollViewer)
                 return;
             }
 
-            // Check database connection
-            if (WorldDatabase.Instance.Store == null)
+            if (!await DataPack.IsLoadedAsync())
             {
-                MessageService.Error("Database connection not available. Please ensure your certificate is configured and the database is accessible.").Send();
+                MessageService.Error("Data pack not available. Please ensure a data pack folder is configured and accessible.").Send();
                 return;
             }
 
@@ -1881,7 +1862,7 @@ public void SetScrollViewer(ScrollViewer scrollViewer)
             // Show success message if saved
             if (editor.WasSaved)
             {
-                MessageService.Info($"NPC spell inventory for {npcName} has been updated in the database.").Send();
+                MessageService.Info($"NPC spell inventory for {npcName} has been updated in the data pack.").Send();
                 
                 // Update professor flag for this NPC
                 await UpdateProfessorFlagForNpc(templateId);
@@ -1904,10 +1885,9 @@ public void SetScrollViewer(ScrollViewer scrollViewer)
                 return;
             }
 
-            // Check database connection
-            if (WorldDatabase.Instance.Store == null)
+            if (!await DataPack.IsLoadedAsync())
             {
-                MessageService.Error("Database connection not available. Please ensure your certificate is configured and the database is accessible.").Send();
+                MessageService.Error("Data pack not available. Please ensure a data pack folder is configured and accessible.").Send();
                 return;
             }
 
@@ -1947,7 +1927,7 @@ public void SetScrollViewer(ScrollViewer scrollViewer)
             // Show success message if saved
             if (editor.WasSaved)
             {
-                MessageService.Info($"Creature deck '{deckName}' has been updated in the database.").Send();
+                MessageService.Info($"Creature deck '{deckName}' has been updated in the data pack.").Send();
             }
         }
         catch (Exception ex)
@@ -2080,9 +2060,6 @@ public void SetScrollViewer(ScrollViewer scrollViewer)
         
         // Update professor flags based on database spell inventory data
         await UpdateProfessorFlagsFromDatabase();
-        
-        // DEBUG: Test the spell inventory system
-        await TestSpellInventorySystem();
     }
 
     private async Task PopulateCollisionData(Bcd collisionData)
@@ -6195,12 +6172,11 @@ public void UpdateCanvasTransform()
             
             Console.WriteLine($"[DEBUG] Opening drop table editor for: {dropTableName}");
             
-            // Check if database is configured first (same pattern as MainWindowViewModel)
-            var isConfigured = await DatabaseConfigService.EnsureDatabaseConfiguredAsync(_mainViewModel.GetMainWindow());
+            var isConfigured = await DataPack.IsLoadedAsync();
             
             if (!isConfigured)
             {
-                MessageService.Info("Database configuration required to edit drop tables.")
+                MessageService.Info("Data pack configuration required to edit drop tables.")
                     .WithDuration(TimeSpan.FromSeconds(3))
                     .Send();
                 return;
@@ -6264,12 +6240,11 @@ public void UpdateCanvasTransform()
             
             Console.WriteLine($"[DEBUG] Creating new drop table: {dropTableName}");
             
-            // Check if database is configured first (same pattern as MainWindowViewModel)
-            var isConfigured = await DatabaseConfigService.EnsureDatabaseConfiguredAsync(_mainViewModel.GetMainWindow());
+            var isConfigured = await DataPack.IsLoadedAsync();
             
             if (!isConfigured)
             {
-                MessageService.Info("Database configuration required to create drop tables.")
+                MessageService.Info("Data pack configuration required to create drop tables.")
                     .WithDuration(TimeSpan.FromSeconds(3))
                     .Send();
                 return;
@@ -6334,11 +6309,10 @@ public void UpdateCanvasTransform()
                 return;
             }
             
-            // Ensure DB configured
-            var isConfigured = await DatabaseConfigService.EnsureDatabaseConfiguredAsync(_mainViewModel.GetMainWindow());
+            var isConfigured = await DataPack.IsLoadedAsync();
             if (!isConfigured)
             {
-                MessageService.Info("Database configuration required to open or create drop tables.")
+                MessageService.Info("Data pack configuration required to open or create drop tables.")
                     .WithDuration(TimeSpan.FromSeconds(3))
                     .Send();
                 return;
@@ -6387,53 +6361,6 @@ public void UpdateCanvasTransform()
         catch (Exception ex)
         {
             MessageService.Error($"Error opening or creating drop table '{dropTableName}': {ex.Message}").Send();
-        }
-    }
-    
-    /// <summary>
-    /// Debug method to test spell inventory system - remove this in production
-    /// </summary>
-    public async Task TestSpellInventorySystem()
-    {
-        try
-        {
-            Console.WriteLine("[DEBUG] Testing spell inventory system...");
-            
-            // Test 1: Try to query database for any existing spell inventories
-            var allSpellInventories = await NpcSpellInventoryService.GetAllNpcSpellInventoriesAsync();
-            Console.WriteLine($"[DEBUG] Found {allSpellInventories.Count} existing spell inventories in database");
-            
-            // Test 2: Try to get template IDs with spell inventories
-            var templateIdsWithSpells = await NpcSpellInventoryService.GetNpcTemplateIdsWithSpellInventoriesAsync();
-            Console.WriteLine($"[DEBUG] Template IDs with spells: {templateIdsWithSpells.Count}");
-            
-            // Test 3: Try to create a test spell inventory
-            var testTemplateId = 12345UL;
-            var testSpellInventory = new Database.Models.NpcSpellInventory(testTemplateId);
-            testSpellInventory.Spells.Add(new Database.Models.SpellInventoryItem(170282421, 0, 50));
-            testSpellInventory.Spells.Add(new Database.Models.SpellInventoryItem(1966685517, 0, 50));
-            
-            Console.WriteLine($"[DEBUG] Attempting to save test spell inventory for template ID {testTemplateId}");
-            var saveResult = await NpcSpellInventoryService.SaveNpcSpellInventoryAsync(testSpellInventory);
-            Console.WriteLine($"[DEBUG] Save result: {saveResult}");
-            
-            if (saveResult)
-            {
-                // Test 4: Try to retrieve the saved inventory
-                var retrievedInventory = await NpcSpellInventoryService.GetNpcSpellInventoryAsync(testTemplateId);
-                Console.WriteLine($"[DEBUG] Retrieved inventory: {retrievedInventory != null}, spells count: {retrievedInventory?.Spells?.Count ?? 0}");
-                
-                // Test 5: Clean up - delete the test inventory
-                var deleteResult = await NpcSpellInventoryService.DeleteNpcSpellInventoryAsync(testTemplateId);
-                Console.WriteLine($"[DEBUG] Delete result: {deleteResult}");
-            }
-            
-            Console.WriteLine("[DEBUG] Spell inventory system test completed");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[ERROR] Spell inventory system test failed: {ex.Message}");
-            Console.WriteLine($"[ERROR] Stack trace: {ex.StackTrace}");
         }
     }
 }
