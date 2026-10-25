@@ -116,6 +116,46 @@ public sealed class SpiralDbFileStoreTests : IDisposable {
         Assert.NotNull(await reloaded.GetAsync<DropTable>("Renamed"));
     }
 
+    [SymlinkFact]
+    public async Task Save_SymlinkedTempFile_Refused() {
+        var pack = Path.Combine(_tempRoot, "pack");
+        CopyFixturesTo(pack);
+        var victim = Path.Combine(_tempRoot, "outside", "victim.txt");
+        Directory.CreateDirectory(Path.GetDirectoryName(victim)!);
+        await File.WriteAllTextAsync(victim, "original");
+        var source = Path.Combine(pack, "DropTables", "droptables_test.json");
+        File.CreateSymbolicLink(source + ".tmp", victim);
+        var store = new SpiralDbFileStore(pack);
+        await store.LoadAsync();
+        var table = (await store.GetAsync<DropTable>("TEST"))!;
+
+        await Assert.ThrowsAsync<IOException>(() => store.SaveAsync(table));
+
+        Assert.Equal("original", await File.ReadAllTextAsync(victim));
+        Assert.Null(new FileInfo(source).LinkTarget);
+    }
+
+    [SymlinkFact]
+    public async Task Save_SymlinkedCategoryDir_Refused() {
+        var pack = Path.Combine(_tempRoot, "pack");
+        var outside = Path.Combine(_tempRoot, "outside");
+        CopyFixturesTo(outside);
+        Directory.CreateDirectory(pack);
+        Directory.CreateSymbolicLink(Path.Combine(pack, "DropTables"), Path.Combine(outside, "DropTables"));
+        var outsideFile = Path.Combine(outside, "DropTables", "droptables_test.json");
+        var before = await File.ReadAllTextAsync(outsideFile);
+        var store = new SpiralDbFileStore(pack);
+        await store.LoadAsync();
+        var table = (await store.GetAsync<DropTable>("TEST"))!;
+        table.Description = "written outside";
+
+        await Assert.ThrowsAsync<IOException>(() => store.SaveAsync(table));
+        await Assert.ThrowsAsync<IOException>(() => store.SaveAsync(new DropTable { Name = "NEW" }));
+
+        Assert.Equal(before, await File.ReadAllTextAsync(outsideFile));
+        Assert.Equal([outsideFile], Directory.GetFiles(Path.Combine(outside, "DropTables")));
+    }
+
     [Fact]
     public async Task Save_New_UsesTypeKeyName() {
         var store = new SpiralDbFileStore(_tempRoot);
@@ -253,6 +293,21 @@ public sealed class SpiralDbFileStoreTests : IDisposable {
             var destination = Path.Combine(root, Path.GetRelativePath(FixtureRoot, file));
             Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
             File.Copy(file, destination);
+        }
+    }
+
+    private sealed class SymlinkFactAttribute : FactAttribute {
+        public SymlinkFactAttribute() {
+            var probe = Path.Combine(Path.GetTempPath(), "imview-link-probe-" + Guid.NewGuid().ToString("N"));
+            try {
+                File.CreateSymbolicLink(probe, Path.GetTempPath());
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or PlatformNotSupportedException) {
+                Skip = $"symbolic links cannot be created here: {ex.Message}";
+            }
+            finally {
+                File.Delete(probe);
+            }
         }
     }
 

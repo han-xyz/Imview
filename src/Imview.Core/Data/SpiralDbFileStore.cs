@@ -69,8 +69,11 @@ public sealed partial class SpiralDbFileStore : IWorldStore {
 
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var tempPath = path + ".tmp";
+        EnsureNoLinkInsideRoot(path);
+        EnsureNoLinkInsideRoot(tempPath);
+        File.Delete(tempPath);
         try {
-            await using (var stream = File.Create(tempPath)) {
+            await using (var stream = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write)) {
                 await JsonSerializer.SerializeAsync(stream, record, typeof(T), SpiralJsonOptions.WriteOptions);
                 stream.WriteByte((byte) '\n');
             }
@@ -95,6 +98,22 @@ public sealed partial class SpiralDbFileStore : IWorldStore {
         => _records.TryGetValue(typeof(T), out var records)
             ? records
             : throw new ArgumentException($"{typeof(T).Name} is not a world store record type.");
+
+    // A data pack comes from other people's commits: a committed symbolic link would make a save
+    // write to wherever the link points.
+    private void EnsureNoLinkInsideRoot(string path) {
+        var root = Path.GetFullPath(_root);
+        var fullPath = Path.GetFullPath(path);
+        if (!fullPath.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal)) {
+            throw new IOException($"Refusing to write {fullPath}: it is outside the data pack folder {root}.");
+        }
+
+        for (var current = fullPath; current.Length > root.Length; current = Path.GetDirectoryName(current)!) {
+            if (new FileInfo(current).LinkTarget is not null) {
+                throw new IOException($"Refusing to write {fullPath}: {current} is a symbolic link.");
+            }
+        }
+    }
 
     private string NewFilePath(WorldCategory category, string key) {
         var path = Path.Combine(_root, category.Directory,
