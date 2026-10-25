@@ -102,7 +102,7 @@ public sealed partial class SpiralDbFileStore : IWorldStore {
     // A data pack comes from other people's commits: a committed symbolic link would make a save
     // write to wherever the link points.
     private void EnsureNoLinkInsideRoot(string path) {
-        var root = Path.GetFullPath(_root);
+        var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(_root));
         var fullPath = Path.GetFullPath(path);
         if (!fullPath.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal)) {
             throw new IOException($"Refusing to write {fullPath}: it is outside the data pack folder {root}.");
