@@ -202,7 +202,7 @@ public static class KIWadFileService {
         return files;
     }
 
-    private static void WriteArchiveFilesToDisk(Dictionary<FileEntry, byte[]?> files,
+    public static void WriteArchiveFilesToDisk(Dictionary<FileEntry, byte[]?> files,
                                              string outputPath,
                                              bool attemptDeserialization) {
         foreach (var file in files) {
@@ -214,7 +214,14 @@ public static class KIWadFileService {
 
             var fileName = fileEntry.FileName ?? "unknown";
             var fileExt = Path.GetExtension(fileName).TrimStart('.');
-            var fileOutputPath = CreateFileOutputPath(outputPath, fileName);
+            string fileOutputPath;
+            try {
+                fileOutputPath = CreateFileOutputPath(outputPath, fileName);
+            }
+            catch (InvalidOperationException) {
+                Console.WriteLine($"Warning: skipped archive entry that resolves outside the output folder: {fileName}");
+                continue;
+            }
 
             // Either write to the file, or attempt deserialization. If we fail to deserialize, we'll write
             // the bytes to disk.
@@ -234,25 +241,11 @@ public static class KIWadFileService {
         }
     }
 
+    /// <exception cref="InvalidOperationException">The entry name resolves outside <paramref name="basePath"/>.</exception>
     private static string CreateFileOutputPath(string basePath, string fileName) {
-        // Get the directory path and file name.
-        var directoryPath = Path.GetDirectoryName(fileName);
-        var actualFileName = Path.GetFileName(fileName);
-
-        // If there's no directory structure in fileName, 
-        // ust combine base path with filename.
-        if (string.IsNullOrEmpty(directoryPath)) {
-            return Path.Combine(basePath, actualFileName);
-        }
-
-        // Combine base path with the directory structure.
-        var fullDirectoryPath = Path.Combine(basePath, directoryPath);
-
-        // Create all necessary directories.
-        _ = Directory.CreateDirectory(fullDirectoryPath);
-
-        // Return the full path including the file name.
-        return Path.Combine(fullDirectoryPath, actualFileName);
+        var fullPath = ClientFileService.ResolveInside(basePath, fileName);
+        _ = Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+        return fullPath;
     }
 
     private static string? TryDeserializeFile(string fileName, byte[] fileData) {
