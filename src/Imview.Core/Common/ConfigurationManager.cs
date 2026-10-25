@@ -33,6 +33,8 @@ public static class ConfigurationManager {
     private static readonly Dictionary<string, Dictionary<string, string>> s_sections = new(StringComparer.OrdinalIgnoreCase);
     private static bool s_isInitialized = false;
     private static string s_configFilePath = "";
+    private static readonly char[] s_lineBreakChars = ['\r', '\n'];
+    private static readonly char[] s_reservedKeyChars = ['[', ']', '=', '\r', '\n'];
 
     /// <summary>
     /// Provides indexer access to configuration settings.
@@ -88,6 +90,14 @@ public static class ConfigurationManager {
     /// <param name="value">The configuration value.</param>
     public static void SetSetting(string key, string value) {
         EnsureInitialized();
+
+        if (key.IndexOfAny(s_reservedKeyChars) >= 0) {
+            throw new ArgumentException($"Configuration key {key} contains one of '[', ']', '=' or a line break.", nameof(key));
+        }
+
+        if (value.IndexOfAny(s_lineBreakChars) >= 0) {
+            throw new ArgumentException($"Configuration value for {key} contains a line break.", nameof(value));
+        }
 
         if (key.Contains('.')) {
             var parts = key.Split(['.'], 2);
@@ -217,8 +227,10 @@ SelectedRevision =
             // Check if this is a section header.
             if (trimmedLine.StartsWith("[") && trimmedLine.EndsWith("]")) {
                 currentSection = trimmedLine.Substring(1, trimmedLine.Length - 2).Trim();
-                currentSectionSettings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                s_sections[currentSection] = currentSectionSettings;
+                if (!s_sections.TryGetValue(currentSection, out currentSectionSettings)) {
+                    currentSectionSettings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    s_sections[currentSection] = currentSectionSettings;
+                }
 
                 continue;
             }
