@@ -3,6 +3,7 @@ using Xunit;
 
 namespace Imview.Tests;
 
+[Collection(WorldStoreProviderCollection.Name)]
 public class ConfigurationManagerTests : IDisposable {
 
     private readonly string _iniPath = Path.Combine(Path.GetTempPath(), $"imview-{Guid.NewGuid():N}.ini");

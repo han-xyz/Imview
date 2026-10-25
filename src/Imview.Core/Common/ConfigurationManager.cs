@@ -190,10 +190,7 @@ public static class ConfigurationManager {
             Directory.CreateDirectory(directory);
         }
 
-        var defaultConfig = @"[Application]
-FirstRun = True
-
-[ClientFiles]
+        var defaultConfig = @"[ClientFiles]
 RevisionsUrl = https://patcher.r10.one/revisions
 SelectedRevision = 
 

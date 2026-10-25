@@ -21,7 +21,6 @@ modification, are permitted provided that the following conditions are met:
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json;
 using System.Threading.Tasks;
 using Imcodec.ObjectProperty.TypeCache;
 using Imview.Core.Data;
@@ -83,7 +82,7 @@ public static class QuestCollection {
             existing.m_questName = questTemplate.m_questName;
             await store.SaveAsync(existing);
         }
-        await store.SaveAsync(Detached(questTemplate));
+        await store.SaveAsync(WorldRecordCopy.Detached(questTemplate));
         await SaveMetadataAsync(store, metadataId, questTemplate.m_questName, name, description);
         return true;
     }
@@ -95,7 +94,7 @@ public static class QuestCollection {
             return null;
         }
 
-        return ToDocument(Detached(template), await store.GetAsync<QuestMetadata>(TemplateIdOf(template.m_questName)));
+        return ToDocument(WorldRecordCopy.Detached(template), await store.GetAsync<QuestMetadata>(TemplateIdOf(template.m_questName)));
     }
 
     /// <returns>All quests, most recently modified first</returns>
@@ -103,7 +102,7 @@ public static class QuestCollection {
         var store = WorldStoreProvider.Current;
         var documents = new List<QuestDocument>();
         foreach (var template in await store.GetAllAsync<QuestTemplate>()) {
-            documents.Add(ToDocument(Detached(template), await store.GetAsync<QuestMetadata>(TemplateIdOf(template.m_questName))));
+            documents.Add(ToDocument(WorldRecordCopy.Detached(template), await store.GetAsync<QuestMetadata>(TemplateIdOf(template.m_questName))));
         }
         return documents.OrderByDescending(q => q.ModifiedAt).ToList();
     }
@@ -138,7 +137,7 @@ public static class QuestCollection {
             questTemplate.m_questName = name;
         }
 
-        await store.SaveAsync(Detached(questTemplate));
+        await store.SaveAsync(WorldRecordCopy.Detached(questTemplate));
 
         var questId = TemplateIdOf(questTemplate.m_questName);
         await SaveMetadataAsync(store, questId, questTemplate.m_questName, name, description);
@@ -180,11 +179,6 @@ public static class QuestCollection {
         CreatedBy = metadata?.CreatedBy ?? Environment.UserName,
         ModifiedBy = metadata?.ModifiedBy ?? Environment.UserName
     };
-
-    private static QuestTemplate Detached(QuestTemplate template)
-        => JsonSerializer.Deserialize<QuestTemplate>(
-            JsonSerializer.SerializeToUtf8Bytes(template, SpiralJsonOptions.WriteOptions),
-            SpiralJsonOptions.Options)!;
 
     private static string QuestNameOf(string questId)
         => questId.StartsWith(TemplateIdPrefix, StringComparison.OrdinalIgnoreCase) ? questId[TemplateIdPrefix.Length..] : questId;
