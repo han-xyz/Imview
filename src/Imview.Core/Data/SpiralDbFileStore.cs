@@ -1,0 +1,147 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using QuestTemplate = Imcodec.ObjectProperty.TypeCache.QuestTemplate;
+using Imview.Core.Database.Models;
+using Imview.Core.Models;
+
+namespace Imview.Core.Data;
+
+public sealed partial class SpiralDbFileStore : IWorldStore {
+
+    private static readonly IReadOnlyList<WorldCategory> Categories = [
+        new(typeof(QuestTemplate), "QuestTemplates", r => ((QuestTemplate) r).m_questName),
+        new(typeof(QuestMetadata), "QuestMetadatas", r => ((QuestMetadata) r).QuestTemplateId),
+        new(typeof(DropTable), "DropTables", r => ((DropTable) r).Name),
+        new(typeof(NpcInventory), "NpcInventory", r => ((NpcInventory) r).TemplateID.ToString()),
+        new(typeof(NpcSpellInventory), "NpcSpellInventory", r => ((NpcSpellInventory) r).TemplateID.ToString()),
+        new(typeof(CreatureSpellbook), "CreatureSpellbook", r => ((CreatureSpellbook) r).DeckName),
+        new(typeof(WizardZoneData), "ZoneTransfer", r => ((WizardZoneData) r).ZoneName),
+    ];
+
+    private readonly string _root;
+    private readonly Dictionary<Type, CategoryRecords> _records =
+        Categories.ToDictionary(c => c.RecordType, c => new CategoryRecords(c));
+
+    public SpiralDbFileStore(string root) {
+        _root = root;
+    }
+
+    public async Task<WorldStoreLoadReport> LoadAsync() {
+        var counts = new Dictionary<string, int>();
+        var failedFiles = new List<string>();
+        var duplicateFiles = new List<string>();
+
+        foreach (var records in _records.Values) {
+            records.Clear();
+            var dir = Path.Combine(_root, records.Category.Directory);
+            if (Directory.Exists(dir)) {
+                foreach (var file in Directory.GetFiles(dir, "*.json").Order(StringComparer.Ordinal)) {
+                    var record = await TryReadAsync(file, records.Category.RecordType);
+                    if (record is null) {
+                        failedFiles.Add(file);
+                    } else if (records.Find(records.Category.KeyOf(record)) is not null) {
+                        duplicateFiles.Add(file);
+                    } else {
+                        records.Add(record, file);
+                    }
+                }
+            }
+            counts[records.Category.Directory] = records.Count;
+        }
+
+        return new WorldStoreLoadReport(counts, failedFiles, duplicateFiles);
+    }
+
+    public Task<IReadOnlyList<T>> GetAllAsync<T>() where T : class
+        => Task.FromResult<IReadOnlyList<T>>(RecordsOf<T>().All.Cast<T>().ToList());
+
+    public Task<T?> GetAsync<T>(string key) where T : class
+        => Task.FromResult(RecordsOf<T>().Find(key) as T);
+
+    public async Task SaveAsync<T>(T record) where T : class {
+        var records = RecordsOf<T>();
+        var path = records.PathOf(record) ?? NewFilePath(records.Category, records.Category.KeyOf(record));
+
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var tempPath = path + ".tmp";
+        await using (var stream = File.Create(tempPath)) {
+            await JsonSerializer.SerializeAsync(stream, record, typeof(T), SpiralJsonOptions.WriteOptions);
+        }
+        File.Move(tempPath, path, overwrite: true);
+
+        records.Add(record, path);
+    }
+
+    public Task DeleteAsync<T>(string key) where T : class {
+        var path = RecordsOf<T>().Remove(key);
+        if (path is not null) {
+            File.Delete(path);
+        }
+        return Task.CompletedTask;
+    }
+
+    private CategoryRecords RecordsOf<T>()
+        => _records.TryGetValue(typeof(T), out var records)
+            ? records
+            : throw new ArgumentException($"{typeof(T).Name} is not a world store record type.");
+
+    private string NewFilePath(WorldCategory category, string key) {
+        var path = Path.Combine(_root, category.Directory,
+            $"{category.Directory.ToLowerInvariant()}_{UnsafeFileNameChars().Replace(key, "-")}.json");
+        if (File.Exists(path)) {
+            throw new IOException($"Cannot save {category.RecordType.Name} '{key}': {path} already holds another record.");
+        }
+        return path;
+    }
+
+    private static async Task<object?> TryReadAsync(string file, Type recordType) {
+        try {
+            await using var stream = File.OpenRead(file);
+            return await JsonSerializer.DeserializeAsync(stream, recordType, SpiralJsonOptions.Options);
+        } catch (JsonException) {
+            return null;
+        }
+    }
+
+    [GeneratedRegex("[^A-Za-z0-9._-]")]
+    private static partial Regex UnsafeFileNameChars();
+
+    private sealed record WorldCategory(Type RecordType, string Directory, Func<object, string> KeyOf);
+
+    private sealed class CategoryRecords(WorldCategory category) {
+        private readonly Dictionary<string, object> _byKey = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, string> _pathByKey = new(StringComparer.OrdinalIgnoreCase);
+
+        public WorldCategory Category { get; } = category;
+
+        public int Count => _byKey.Count;
+
+        public IEnumerable<object> All => _byKey.Values;
+
+        public object? Find(string key) => _byKey.GetValueOrDefault(key);
+
+        public string? PathOf(object record) => _pathByKey.GetValueOrDefault(Category.KeyOf(record));
+
+        public void Add(object record, string path) {
+            var key = Category.KeyOf(record);
+            _byKey[key] = record;
+            _pathByKey[key] = path;
+        }
+
+        public string? Remove(string key) {
+            _byKey.Remove(key);
+            return _pathByKey.Remove(key, out var path) ? path : null;
+        }
+
+        public void Clear() {
+            _byKey.Clear();
+            _pathByKey.Clear();
+        }
+    }
+
+}
