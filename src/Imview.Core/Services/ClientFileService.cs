@@ -27,12 +27,16 @@ using System.Linq;
 using System.IO;
 using System.Xml.Serialization;
 using System.Xml;
+using System.Text.RegularExpressions;
+using System.Diagnostics.CodeAnalysis;
 using Imview.Core.Common;
 using Imview.Core.Models;
 
 namespace Imview.Core.Services;
 
 public class ClientFileService {
+
+    private static readonly Regex s_revisionPattern = new(@"^[A-Za-z0-9._-]+\z");
 
     private readonly HttpClient _httpClient;
     private readonly string _cacheDirectory;
@@ -50,20 +54,43 @@ public class ClientFileService {
             var url = ConfigurationManager.GetSetting("ClientFiles.RevisionsUrl") ?? "https://patcher.r10.one/revisions";
             
             var response = await _httpClient.GetStringAsync(url);
-            var revisions = JsonSerializer.Deserialize<List<string>>(response);
+            var revisions = JsonSerializer.Deserialize<List<string?>>(response);
             
             if (revisions == null) {
                 return new List<string>();
             }
 
-            return revisions
-                .Where(r => !string.IsNullOrEmpty(r))
+            var safeRevisions = new List<string>();
+            foreach (var revision in revisions) {
+                if (IsSafeRevision(revision)) {
+                    safeRevisions.Add(revision);
+                }
+                else {
+                    Console.WriteLine($"Dropped unsafe revision from patcher: {JsonSerializer.Serialize(revision)}");
+                }
+            }
+
+            return safeRevisions
                 .OrderByDescending(GetRevisionNumber)
                 .ToList();
         }
         catch (Exception ex) {
             throw new InvalidOperationException($"Failed to fetch revisions: {ex.Message}", ex);
         }
+    }
+
+    public static bool IsSafeRevision([NotNullWhen(true)] string? revision) {
+        return revision is not null && revision != "." && revision != ".." && s_revisionPattern.IsMatch(revision);
+    }
+
+    public static string ResolveInside(string root, string relative) {
+        var fullRoot = Path.GetFullPath(root);
+        var fullPath = Path.GetFullPath(Path.Combine(fullRoot, relative));
+        if (!fullPath.StartsWith(fullRoot + Path.DirectorySeparatorChar, StringComparison.Ordinal)) {
+            throw new InvalidOperationException($"Refusing path outside the cache directory: {fullPath}");
+        }
+
+        return fullPath;
     }
 
     public async Task<bool> TestConnectionAsync() {
@@ -211,7 +238,7 @@ public class ClientFileService {
 
     public async Task<string> DownloadFileAsync(FileRecord fileRecord, string revision, IProgress<DownloadProgress>? progress = null) {
         var fileName = Path.GetFileName(fileRecord.SourceFileName);
-        var localFilePath = Path.Combine(_cacheDirectory, revision, fileName);
+        var localFilePath = ResolveInside(_cacheDirectory, Path.Combine(revision, fileName));
         
         var progressInfo = new DownloadProgress {
             FileName = fileName,
