@@ -88,8 +88,8 @@ public class ZoneEditorViewModel : ViewModelBase
     private bool _autoPromptedZoneSelection = false;
 
     // World database availability
-    private bool _isWorldDatabaseReady = false;
-    private string _worldDatabaseStatusText = string.Empty;
+    private bool _isDataPackReady = false;
+    private string _dataPackStatusText = string.Empty;
     private bool _showCollisions = true;
     private bool _showZoneObjects = true;
     private bool _showNifGeometry = true;
@@ -202,7 +202,7 @@ private Canvas? _zoneObjectCanvas = null;
         LoadAvailableZones();
 
         // Check world database availability at startup
-        _ = System.Threading.Tasks.Task.Run(CheckWorldDatabaseAvailabilityAsync);
+        _ = System.Threading.Tasks.Task.Run(CheckDataPackAvailabilityAsync);
 
         // Auto-prompt for zone selection on first open of a brand new Zone Editor tab
         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
@@ -1417,25 +1417,25 @@ private Canvas? _zoneObjectCanvas = null;
     public string ZoomDisplayText => $"Zoom: {ZoomLevel:P0}";
 
     // World database gating properties
-    public bool IsWorldDatabaseReady {
-        get => _isWorldDatabaseReady;
+    public bool IsDataPackReady {
+        get => _isDataPackReady;
         private set {
-            this.RaiseAndSetIfChanged(ref _isWorldDatabaseReady, value);
-            this.RaisePropertyChanged(nameof(NotWorldDatabaseReady));
+            this.RaiseAndSetIfChanged(ref _isDataPackReady, value);
+            this.RaisePropertyChanged(nameof(NotDataPackReady));
             this.RaisePropertyChanged(nameof(ShowSpawnDeckSection));
             this.RaisePropertyChanged(nameof(ShowSpawnLootTablesSection));
             this.RaisePropertyChanged(nameof(ShowNpcDbActions));
         }
     }
-    public bool NotWorldDatabaseReady => !IsWorldDatabaseReady;
-    public string WorldDatabaseStatusText {
-        get => _worldDatabaseStatusText;
-        private set => this.RaiseAndSetIfChanged(ref _worldDatabaseStatusText, value);
+    public bool NotDataPackReady => !IsDataPackReady;
+    public string DataPackStatusText {
+        get => _dataPackStatusText;
+        private set => this.RaiseAndSetIfChanged(ref _dataPackStatusText, value);
     }
 
-    public bool ShowSpawnDeckSection => HasSpawnDeck && IsWorldDatabaseReady;
-    public bool ShowSpawnLootTablesSection => HasSpawnLootTables && IsWorldDatabaseReady;
-    public bool ShowNpcDbActions => IsSelectedObjectNpc && IsWorldDatabaseReady;
+    public bool ShowSpawnDeckSection => HasSpawnDeck && IsDataPackReady;
+    public bool ShowSpawnLootTablesSection => HasSpawnLootTables && IsDataPackReady;
+    public bool ShowNpcDbActions => IsSelectedObjectNpc && IsDataPackReady;
 
     // Expose Vector3 components for XAML binding (Zone Objects)
     public float LocationX => SelectedCoreObject?.m_location.X ?? 0f;
@@ -1702,17 +1702,17 @@ public void SetScrollViewer(ScrollViewer scrollViewer)
         return null;
     }
 
-    private async System.Threading.Tasks.Task CheckWorldDatabaseAvailabilityAsync()
+    private async System.Threading.Tasks.Task CheckDataPackAvailabilityAsync()
     {
         try
         {
-            IsWorldDatabaseReady = await DataPack.IsLoadedAsync();
-            WorldDatabaseStatusText = IsWorldDatabaseReady ? string.Empty : "No data pack folder is set, or the folder does not exist.";
+            IsDataPackReady = await DataPack.IsLoadedAsync();
+            DataPackStatusText = IsDataPackReady ? string.Empty : "No data pack folder is set, or the folder does not exist.";
         }
         catch
         {
-            IsWorldDatabaseReady = false;
-            WorldDatabaseStatusText = "Data pack could not be loaded.";
+            IsDataPackReady = false;
+            DataPackStatusText = "Data pack could not be loaded.";
         }
     }
 

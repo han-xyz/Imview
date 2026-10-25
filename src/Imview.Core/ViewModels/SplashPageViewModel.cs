@@ -149,13 +149,13 @@ public class SplashPageViewModel : ViewModelBase {
                 "Analyze Object Property Blob",
                 "Unpack KIWADs",
                 "View WAD Files",
-                "Configure Database & Client Files",
-                "",
+                "Configure Client Files",
+                "Data Pack...",
                 _mainViewModel.AnalyzeObjectPropertyBlob,
                 () => _mainViewModel.UnpackKiwad(false),
                 _mainViewModel.ShowWadViewer,
-                _mainViewModel.ShowDatabaseAndClientConfig,
-                null)
+                _mainViewModel.ShowClientFileConfig,
+                _mainViewModel.ShowDataPackConfig)
         ];
     }
     

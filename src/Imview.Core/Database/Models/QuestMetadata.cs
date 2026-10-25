@@ -19,6 +19,7 @@ modification, are permitted provided that the following conditions are met:
 */
 
 using System;
+using System.Text.Json.Serialization;
 
 namespace Imview.Core.Database.Models;
 
@@ -26,7 +27,10 @@ namespace Imview.Core.Database.Models;
 /// Represents quest metadata stored separately from the QuestTemplate for editor purposes
 /// </summary>
 public class QuestMetadata {
-    public string Id { get; set; } = string.Empty;
+    // Files from the old database carry an "Id". Declaring it ignored keeps it out of the unmodelled
+    // properties a save writes back (SpiralJsonOptions), so the next save of such a file drops it.
+    [JsonIgnore]
+    public string? Id { get; set; }
     public string QuestTemplateId { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;

@@ -64,6 +64,10 @@ public static class QuestCollection {
     /// </summary>
     /// <returns>False if no quest has <paramref name="questId"/></returns>
     public static async Task<bool> UpdateQuestAsync(string questId, QuestTemplate questTemplate, string name, string description = "") {
+        if (questTemplate.m_questName.IsEmpty) {
+            throw new ArgumentException("Quest name (m_questName) cannot be empty.", nameof(questTemplate));
+        }
+
         var store = WorldStoreProvider.Current;
         var existing = await store.GetAsync<QuestTemplate>(QuestNameOf(questId));
         if (existing == null) {

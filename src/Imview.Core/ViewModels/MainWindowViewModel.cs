@@ -19,6 +19,8 @@ modification, are permitted provided that the following conditions are met:
 */
 
 using System;
+using System.IO;
+using System.Linq;
 using System.Windows.Input;
 using Imview.Core.ViewModels;
 using ReactiveUI;
@@ -30,6 +32,7 @@ using System.Collections.Generic;
 using Imcodec.ObjectProperty.TypeCache;
 using System.Threading.Tasks;
 using Imview.Core.Views;
+using Imview.Core.Common;
 
 namespace Imview.Core.ViewModels;
 
@@ -54,11 +57,24 @@ public class MainWindowViewModel : ViewModelBase {
 
     public void Initialize(Avalonia.Controls.Window window) {
         _mainWindow = window;
-        
+        _mainWindow.Opened += OnMainWindowOpened;
+
         // Try to load Root.wad from cache on startup
         _ = Task.Run(LoadRootWadAsync);
     }
-    
+
+    private async void OnMainWindowOpened(object? sender, EventArgs e) {
+        _mainWindow!.Opened -= OnMainWindowOpened;
+
+        var path = ConfigurationManager.GetSetting(WorldStoreProvider.DataPackPathSetting);
+        if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path)) {
+            await OpenDataPackConfigAsync();
+            return;
+        }
+
+        await ShowDataPackLoadReportAsync();
+    }
+
     private async Task LoadRootWadAsync() {
         try {
             var loaded = await RootWadService.Instance.LoadFromCacheAsync();
@@ -251,9 +267,13 @@ public class MainWindowViewModel : ViewModelBase {
     }
 
     /// <summary>
-    /// Shows the database configuration dialog.
+    /// Shows the data pack folder picker; after a new folder is saved, loads it and shows the load report.
     /// </summary>
-    public async void ShowDatabaseConfig() {
+    public async void ShowDataPackConfig() {
+        await OpenDataPackConfigAsync();
+    }
+
+    private async Task OpenDataPackConfigAsync() {
         try {
             if (_mainWindow == null) {
                 MessageService.Error("Main window is not initialized.")
@@ -262,18 +282,42 @@ public class MainWindowViewModel : ViewModelBase {
                 return;
             }
 
-            var configDialog = new DatabaseConfigWindow();
+            var configDialog = new DataPackConfigWindow();
             var result = await configDialog.ShowDialog<bool?>(_mainWindow);
-            
+
             if (result == true) {
-                MessageService.Info("Database configuration updated successfully!")
-                    .WithDuration(TimeSpan.FromSeconds(3))
-                    .Send();
+                await ShowDataPackLoadReportAsync();
             }
         }
         catch (Exception ex) {
-            MessageService.Error($"Error showing database configuration: {ex.Message}")
+            MessageService.Error($"Error showing data pack configuration: {ex.Message}")
                 .WithDuration(TimeSpan.FromSeconds(5))
+                .Send();
+        }
+    }
+
+    private static async Task ShowDataPackLoadReportAsync() {
+        WorldStoreLoadReport report;
+        try {
+            report = await WorldStoreProvider.Current.LoadAsync();
+        }
+        catch (Exception ex) {
+            MessageService.Error($"Data pack could not be loaded: {ex.Message}")
+                .WithDuration(TimeSpan.FromSeconds(10))
+                .Send();
+            return;
+        }
+
+        var counts = string.Join(", ", report.CountsByDirectory.Select(c => $"{c.Key} {c.Value}"));
+        MessageService.Info($"Data pack loaded: {counts}")
+            .WithDuration(TimeSpan.FromSeconds(5))
+            .Send();
+
+        if (report.FailedFiles.Count > 0 || report.DuplicateFiles.Count > 0) {
+            var lines = report.FailedFiles.Select(f => $"Unreadable: {f}")
+                .Concat(report.DuplicateFiles.Select(f => $"Duplicate key, skipped: {f}"));
+            MessageService.Warn($"Data pack files not loaded:\n{string.Join("\n", lines)}")
+                .WithDuration(TimeSpan.FromSeconds(30))
                 .Send();
         }
     }
@@ -304,15 +348,6 @@ public class MainWindowViewModel : ViewModelBase {
                 .WithDuration(TimeSpan.FromSeconds(5))
                 .Send();
         }
-    }
-
-    /// <summary>
-    /// Shows both database and client file configuration dialogs.
-    /// </summary>
-    public async void ShowDatabaseAndClientConfig() {
-        ShowDatabaseConfig();
-        await Task.Delay(500); // Small delay between dialogs
-        ShowClientFileConfig();
     }
 
     /// <summary>

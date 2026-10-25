@@ -58,6 +58,18 @@ public sealed class WorldServicesTests : IDisposable {
     }
 
     [Fact]
+    public async Task DropTable_Renamed_OldFileRemoved() {
+        var service = new DropTableService();
+        var table = await service.GetDropTableAsync("TEST");
+        table!.Name = "TEST-RENAMED";
+
+        Assert.True(await service.UpdateDropTableAsync(table, previousName: "TEST"));
+
+        Assert.Equal(["droptables_TEST-RENAMED.json"], FilesIn("DropTables"));
+        Assert.Null(await service.GetDropTableAsync("TEST"));
+    }
+
+    [Fact]
     public async Task DropTable_EditsDoNotReachStoreUntilSaved() {
         var service = new DropTableService();
         var table = await service.GetDropTableAsync("TEST");

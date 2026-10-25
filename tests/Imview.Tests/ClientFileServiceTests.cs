@@ -1,9 +1,26 @@
+using Imview.Core.Common;
 using Imview.Core.Services;
 using Xunit;
 
 namespace Imview.Tests;
 
-public class ClientFileServiceTests {
+[Collection(WorldStoreProviderCollection.Name)]
+public sealed class ClientFileServiceTests : IDisposable {
+
+    private readonly string _tempRoot = Path.Combine(Path.GetTempPath(), "imview-tests-" + Guid.NewGuid().ToString("N"));
+    private readonly string? _configHome = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
+
+    public ClientFileServiceTests() {
+        Environment.SetEnvironmentVariable("XDG_CONFIG_HOME", _tempRoot);
+        ConfigurationManager.Initialize(Path.Combine(_tempRoot, "config.ini"));
+    }
+
+    public void Dispose() {
+        Environment.SetEnvironmentVariable("XDG_CONFIG_HOME", _configHome);
+        if (Directory.Exists(_tempRoot)) {
+            Directory.Delete(_tempRoot, recursive: true);
+        }
+    }
 
     [Theory]
     [InlineData("V_r806919.Wizard_1_610", true)]
@@ -27,6 +44,16 @@ public class ClientFileServiceTests {
         Assert.Throws<InvalidOperationException>(() => ClientFileService.ResolveInside(root, Path.Combine("..", "..", "autostart", "imview.desktop")));
         Assert.Throws<InvalidOperationException>(() => ClientFileService.ResolveInside(root, Path.Combine(Path.GetTempPath(), "elsewhere")));
         Assert.Equal(Path.Combine(root, "V_r1.Wizard_1", "Root.wad"), ClientFileService.ResolveInside(root, Path.Combine("V_r1.Wizard_1", "Root.wad")));
+    }
+
+    [Theory]
+    [InlineData("V_r806919.Wizard_1_610", "V_r806919.Wizard_1_610")]
+    [InlineData("..", "")]
+    [InlineData("../../autostart", "")]
+    public void SavedRevision_Validated(string saved, string expected) {
+        ConfigurationManager.SetSetting("ClientFiles.SelectedRevision", saved);
+
+        Assert.Equal(expected, new ClientFileService().GetSelectedRevision());
     }
 
 }

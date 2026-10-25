@@ -677,14 +677,13 @@ public class DatabaseResTeleportEditor : EditorWindowBase<ResTeleport>
             ?? new WizardZoneData { ZoneName = _zoneName };
 
         var index = zoneData.Teleports.FindIndex(t => t.TriggerName == _triggerName);
-        var entry = new WizardTeleportData { TriggerName = _triggerName, Teleport = teleport };
         if (index >= 0)
         {
-            zoneData.Teleports[index] = entry;
+            zoneData.Teleports[index].Teleport = teleport;
         }
         else
         {
-            zoneData.Teleports.Add(entry);
+            zoneData.Teleports.Add(new WizardTeleportData { TriggerName = _triggerName, Teleport = teleport });
         }
 
         await ZoneTransferService.SaveZoneTransferAsync(zoneData);

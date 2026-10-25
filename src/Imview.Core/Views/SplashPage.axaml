@@ -235,9 +235,17 @@
                                     FontWeight="Medium"
                                     Margin="0,0,15,10"/>
                                     
-                            <Button Content="Configure Database &amp; Client Files"
+                            <Button Content="Configure Client Files"
                                     Command="{Binding $parent[UserControl].((vm:SplashPageViewModel)DataContext).Sections[3].FourthButtonCommand}"
-                                    Width="250"
+                                    Width="180"
+                                    Height="38"
+                                    FontSize="13"
+                                    FontWeight="Medium"
+                                    Margin="0,0,15,10"/>
+
+                            <Button Content="Data Pack..."
+                                    Command="{Binding $parent[UserControl].((vm:SplashPageViewModel)DataContext).Sections[3].FifthButtonCommand}"
+                                    Width="130"
                                     Height="38"
                                     FontSize="13"
                                     FontWeight="Medium"

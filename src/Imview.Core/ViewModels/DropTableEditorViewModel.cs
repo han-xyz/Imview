@@ -38,6 +38,7 @@ public class DropTableEditorViewModel : ViewModelBase {
     private readonly MainWindowViewModel _mainViewModel;
     private readonly DropTableService _dropTableService;
     private DropTable? _selectedDropTable;
+    private string? _savedDropTableName;
     private string _searchText = string.Empty;
     private bool _isLoading;
     private string _statusMessage = string.Empty;
@@ -48,6 +49,7 @@ public class DropTableEditorViewModel : ViewModelBase {
         get => _selectedDropTable;
         set {
             this.RaiseAndSetIfChanged(ref _selectedDropTable, value);
+            _savedDropTableName = value?.Name;
             LoadSelectedTable();
         }
     }
@@ -345,8 +347,9 @@ public class DropTableEditorViewModel : ViewModelBase {
                 return;
             }
 
-            var success = await _dropTableService.UpdateDropTableAsync(SelectedDropTable);
+            var success = await _dropTableService.UpdateDropTableAsync(SelectedDropTable, _savedDropTableName);
             if (success) {
+                _savedDropTableName = SelectedDropTable.Name;
                 StatusMessage = $"Drop table '{SelectedDropTable.Name}' saved successfully.";
             } else {
                 StatusMessage = "Failed to save drop table.";

@@ -190,15 +190,7 @@ public static class ConfigurationManager {
             Directory.CreateDirectory(directory);
         }
 
-        var defaultConfig = @"[Database]
-WorldDatabaseUrl = 
-WorldDatabaseName = WorldDB
-WorldDatabaseCertificatePath = 
-DatabaseMaxNumberOfRequestsPerSession = 16
-DatabaseRequestTimeoutInSeconds = 90
-DatabaseWaitForNonStaleResultsTimeout = 5
-
-[Application]
+        var defaultConfig = @"[Application]
 FirstRun = True
 
 [ClientFiles]

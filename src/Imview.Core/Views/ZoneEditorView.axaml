@@ -1242,7 +1242,7 @@
                                                      Foreground="#4CAF50" Margin="0,0,0,8"/>
 
                                             <!-- Actions only when DB is available -->
-                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4" IsVisible="{Binding IsWorldDatabaseReady}">
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4" IsVisible="{Binding IsDataPackReady}">
                                                 <Button Content="Edit Inventory" 
                                                         Command="{Binding EditNpcInventoryCommand}"
                                                         Height="30" Width="120"
@@ -1273,12 +1273,12 @@
                                             </StackPanel>
 
                                             <!-- Fallback status when DB not available -->
-                                            <TextBlock Text="{Binding WorldDatabaseStatusText}"
+                                            <TextBlock Text="{Binding DataPackStatusText}"
                                                      FontSize="8" 
                                                      Foreground="#888888" 
                                                      FontStyle="Italic"
                                                      Margin="0,4,0,0"
-                                                     IsVisible="{Binding NotWorldDatabaseReady}"/>
+                                                     IsVisible="{Binding NotDataPackReady}"/>
                                         </StackPanel>
                                         
                                         <!-- Loot Tables -->
@@ -2019,7 +2019,7 @@
                                                      Foreground="#8A2BE2" Margin="0,0,0,8"/>
 
                                             <!-- Deck editor only when DB available -->
-                                            <Border Background="#2A2A2A" Margin="0,2" Padding="8,4" CornerRadius="3" BorderBrush="#8A2BE2" BorderThickness="1" IsVisible="{Binding IsWorldDatabaseReady}">
+                                            <Border Background="#2A2A2A" Margin="0,2" Padding="8,4" CornerRadius="3" BorderBrush="#8A2BE2" BorderThickness="1" IsVisible="{Binding IsDataPackReady}">
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="*" />
@@ -2050,7 +2050,7 @@
                                                      Foreground="#FF6B35" Margin="0,0,0,8"/>
                                             
                                             <!-- Only show when DB available -->
-                                            <ItemsControl ItemsSource="{Binding SelectedSpawnTemplateLootTableItems}" IsVisible="{Binding IsWorldDatabaseReady}">
+                                            <ItemsControl ItemsSource="{Binding SelectedSpawnTemplateLootTableItems}" IsVisible="{Binding IsDataPackReady}">
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate>
                                                         <Border Background="#2A2A2A" Margin="0,2" Padding="8,4" CornerRadius="3" BorderBrush="#FF6B35" BorderThickness="1">
@@ -2081,9 +2081,9 @@
                                             </ItemsControl>
 
                                             <!-- Fallback status when DB not available -->
-                                            <TextBlock Text="{Binding WorldDatabaseStatusText}" 
+                                            <TextBlock Text="{Binding DataPackStatusText}" 
                                                      FontSize="8" Foreground="#888888" FontStyle="Italic" TextWrapping="Wrap" Margin="0,4,0,0"
-                                                     IsVisible="{Binding NotWorldDatabaseReady}"/>
+                                                     IsVisible="{Binding NotDataPackReady}"/>
                                         </StackPanel>
 
                                     </StackPanel>

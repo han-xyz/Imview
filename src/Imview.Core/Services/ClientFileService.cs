@@ -103,8 +103,19 @@ public class ClientFileService {
         }
     }
 
+    /// <returns>The revision saved in config.ini, or empty when none is saved or it fails <see cref="IsSafeRevision"/></returns>
     public string GetSelectedRevision() {
-        return ConfigurationManager.GetSetting("ClientFiles.SelectedRevision") ?? string.Empty;
+        var revision = ConfigurationManager.GetSetting("ClientFiles.SelectedRevision");
+        if (string.IsNullOrEmpty(revision)) {
+            return string.Empty;
+        }
+
+        if (!IsSafeRevision(revision)) {
+            Console.WriteLine($"Ignored unsafe revision in config.ini: {JsonSerializer.Serialize(revision)}");
+            return string.Empty;
+        }
+
+        return revision;
     }
 
     public void SetSelectedRevision(string revision) {

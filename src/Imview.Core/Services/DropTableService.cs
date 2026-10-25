@@ -37,7 +37,7 @@ public class DropTableService {
     }
 
     /// <summary>
-    /// Gets a copy of a drop table by name; a RavenDB id (<c>droptables/&lt;name&gt;</c>) is accepted too
+    /// Gets a copy of a drop table by name; a legacy id (<c>droptables/&lt;name&gt;</c>) is accepted too
     /// </summary>
     public async Task<DropTable?> GetDropTableAsync(string name) {
         if (string.IsNullOrWhiteSpace(name)) {
@@ -79,9 +79,10 @@ public class DropTableService {
     }
 
     /// <summary>
-    /// Saves a copy of the drop table, replacing the stored table with the same name
+    /// Saves a copy of the drop table, replacing the stored table with the same name; when the table was
+    /// renamed from <paramref name="previousName"/>, the table under the old name is deleted after the save
     /// </summary>
-    public async Task<bool> UpdateDropTableAsync(DropTable dropTable) {
+    public async Task<bool> UpdateDropTableAsync(DropTable dropTable, string? previousName = null) {
         if (dropTable == null) {
             throw new ArgumentNullException(nameof(dropTable));
         }
@@ -99,11 +100,17 @@ public class DropTableService {
         dropTable.ModifiedAt = DateTime.UtcNow;
         dropTable.ModifiedBy = Environment.UserName;
         await store.SaveAsync(WorldRecordCopy.Detached(dropTable));
+
+        if (!string.IsNullOrWhiteSpace(previousName)
+            && !string.Equals(previousName, dropTable.Name, StringComparison.OrdinalIgnoreCase)
+            && await store.GetAsync<DropTable>(previousName) != null) {
+            await store.DeleteAsync<DropTable>(previousName);
+        }
         return true;
     }
 
     /// <summary>
-    /// Deletes a drop table by name; a RavenDB id (<c>droptables/&lt;name&gt;</c>) is accepted too
+    /// Deletes a drop table by name; a legacy id (<c>droptables/&lt;name&gt;</c>) is accepted too
     /// </summary>
     /// <returns>False if no table has that name</returns>
     public async Task<bool> DeleteDropTableAsync(string name) {

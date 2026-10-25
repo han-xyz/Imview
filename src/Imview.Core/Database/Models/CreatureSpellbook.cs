@@ -7,8 +7,8 @@ using System.ComponentModel.DataAnnotations;
 namespace Imview.Core.Database.Models
 {
     /// <summary>
-    /// RavenDB document representing a creature spellbook entry.
-    /// Stored in the CreatureSpellbook collection.
+    /// A creature spellbook entry in the data pack.
+    /// Stored in the CreatureSpellbook folder.
     /// </summary>
     public class CreatureSpellbook
     {

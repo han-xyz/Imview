@@ -31,11 +31,11 @@
                     ToolTip.Tip="Save as a .view file on your computer"/>
             
             <Button Name="UploadButton"
-                    Content="Upload to Database"
+                    Content="Save to Data Pack"
                     HorizontalAlignment="Stretch"
                     Height="45"
                     Click="OnUploadClick"
-                    ToolTip.Tip="Save to the remote RavenDB database"/>
+                    ToolTip.Tip="Save to the data pack folder"/>
             
             <Button Name="SaveBothButton"
                     Content="Save Both Local and Upload"

@@ -106,6 +106,43 @@ public sealed class QuestStoreTests : IDisposable {
     }
 
     [Fact]
+    public async Task QuestMetadata_NoIdOnSave() {
+        var metadataFile = Path.Combine(DataRoot, "QuestMetadatas", "questmetadata_GH-HERO-C03-005.json");
+        File.WriteAllText(metadataFile, """
+            { "Id": "questmetadatas/1-A", "QuestTemplateId": "questtemplates/GH-HERO-C03-005", "Name": "Hero quest" }
+            """);
+        WorldStoreProvider.Reload();
+        var quest = await QuestCollection.GetQuestAsync("GH-HERO-C03-005");
+
+        Assert.True(await QuestCollection.UpdateQuestAsync(quest!.Id, quest.Template, "Hero quest", "Saved"));
+
+        using var saved = JsonDocument.Parse(File.ReadAllText(metadataFile));
+        Assert.False(saved.RootElement.TryGetProperty("Id", out _));
+        Assert.Equal("Saved", saved.RootElement.GetProperty("Description").GetString());
+    }
+
+    [Fact]
+    public async Task Update_EmptyQuestName_Rejected() {
+        var templatesBefore = FilesIn("QuestTemplates");
+        var quest = await QuestCollection.GetQuestAsync("GH-HERO-C03-005");
+        quest!.Template.m_questName = "";
+
+        await Assert.ThrowsAsync<ArgumentException>(() => QuestCollection.UpdateQuestAsync(quest.Id, quest.Template, "Nameless", ""));
+
+        Assert.Equal(templatesBefore, FilesIn("QuestTemplates"));
+        Assert.NotNull(await QuestCollection.GetQuestAsync("GH-HERO-C03-005"));
+    }
+
+    [Fact]
+    public void DataPackPath_Empty_ProviderThrowsNamedError() {
+        ConfigurationManager.SetSetting(WorldStoreProvider.DataPackPathSetting, "");
+        WorldStoreProvider.Reload();
+
+        var error = Assert.Throws<InvalidOperationException>(() => WorldStoreProvider.Current);
+        Assert.Contains(WorldStoreProvider.DataPackPathSetting, error.Message);
+    }
+
+    [Fact]
     public async Task GetQuest_EditsDoNotReachStoreUntilSaved() {
         var quest = await QuestCollection.GetQuestAsync("GH-HERO-C03-005");
         quest!.Template.m_questLevel = 42;
