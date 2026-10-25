@@ -43,7 +43,7 @@ public static class CreatureDeckService {
 
         return new CreatureDeck {
             DeckName = doc.DeckName,
-            SpellTemplateIds = doc.SpellTemplateIds.Select(id => (uint) id).ToList()
+            SpellTemplateIds = doc.SpellTemplateIds?.Select(id => (uint) id).ToList() ?? []
         };
     }
 

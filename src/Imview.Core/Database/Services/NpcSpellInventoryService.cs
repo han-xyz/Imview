@@ -41,7 +41,7 @@ namespace Imview.Core.Database.Services {
         }
 
         public static async Task<bool> HasNpcSpellInventoryAsync(ulong templateId) {
-            return await GetNpcSpellInventoryAsync(templateId) != null;
+            return await WorldStoreProvider.Current.GetAsync<NpcSpellInventory>(templateId.ToString()) != null;
         }
 
         public static async Task<List<NpcSpellInventory>> GetAllNpcSpellInventoriesAsync() {

@@ -36,7 +36,7 @@ public static class NpcInventoryService {
     }
 
     public static async Task<bool> HasNpcInventoryAsync(ulong templateId) {
-        return await GetNpcInventoryAsync(templateId) != null;
+        return await WorldStoreProvider.Current.GetAsync<NpcInventory>(templateId.ToString()) != null;
     }
 
     /// <summary>

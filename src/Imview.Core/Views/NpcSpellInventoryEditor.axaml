@@ -30,7 +30,7 @@
                 Padding="10" 
                 Margin="16,16,16,10">
             <StackPanel>
-                <TextBlock Text="DATABASE EDITING AUTHORITY" 
+                <TextBlock Text="DATA PACK EDITING AUTHORITY" 
                           FontWeight="Bold" 
                           Foreground="Yellow" 
                           HorizontalAlignment="Center" 

@@ -2060,9 +2060,6 @@ public void SetScrollViewer(ScrollViewer scrollViewer)
         
         // Update professor flags based on database spell inventory data
         await UpdateProfessorFlagsFromDatabase();
-        
-        // DEBUG: Test the spell inventory system
-        await TestSpellInventorySystem();
     }
 
     private async Task PopulateCollisionData(Bcd collisionData)
@@ -6364,53 +6361,6 @@ public void UpdateCanvasTransform()
         catch (Exception ex)
         {
             MessageService.Error($"Error opening or creating drop table '{dropTableName}': {ex.Message}").Send();
-        }
-    }
-    
-    /// <summary>
-    /// Debug method to test spell inventory system - remove this in production
-    /// </summary>
-    public async Task TestSpellInventorySystem()
-    {
-        try
-        {
-            Console.WriteLine("[DEBUG] Testing spell inventory system...");
-            
-            // Test 1: Try to query database for any existing spell inventories
-            var allSpellInventories = await NpcSpellInventoryService.GetAllNpcSpellInventoriesAsync();
-            Console.WriteLine($"[DEBUG] Found {allSpellInventories.Count} existing spell inventories in database");
-            
-            // Test 2: Try to get template IDs with spell inventories
-            var templateIdsWithSpells = await NpcSpellInventoryService.GetNpcTemplateIdsWithSpellInventoriesAsync();
-            Console.WriteLine($"[DEBUG] Template IDs with spells: {templateIdsWithSpells.Count}");
-            
-            // Test 3: Try to create a test spell inventory
-            var testTemplateId = 12345UL;
-            var testSpellInventory = new Database.Models.NpcSpellInventory(testTemplateId);
-            testSpellInventory.Spells.Add(new Database.Models.SpellInventoryItem(170282421, 0, 50));
-            testSpellInventory.Spells.Add(new Database.Models.SpellInventoryItem(1966685517, 0, 50));
-            
-            Console.WriteLine($"[DEBUG] Attempting to save test spell inventory for template ID {testTemplateId}");
-            var saveResult = await NpcSpellInventoryService.SaveNpcSpellInventoryAsync(testSpellInventory);
-            Console.WriteLine($"[DEBUG] Save result: {saveResult}");
-            
-            if (saveResult)
-            {
-                // Test 4: Try to retrieve the saved inventory
-                var retrievedInventory = await NpcSpellInventoryService.GetNpcSpellInventoryAsync(testTemplateId);
-                Console.WriteLine($"[DEBUG] Retrieved inventory: {retrievedInventory != null}, spells count: {retrievedInventory?.Spells?.Count ?? 0}");
-                
-                // Test 5: Clean up - delete the test inventory
-                var deleteResult = await NpcSpellInventoryService.DeleteNpcSpellInventoryAsync(testTemplateId);
-                Console.WriteLine($"[DEBUG] Delete result: {deleteResult}");
-            }
-            
-            Console.WriteLine("[DEBUG] Spell inventory system test completed");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[ERROR] Spell inventory system test failed: {ex.Message}");
-            Console.WriteLine($"[ERROR] Stack trace: {ex.StackTrace}");
         }
     }
 }
