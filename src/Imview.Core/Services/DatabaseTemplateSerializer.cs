@@ -22,7 +22,6 @@ using System;
 using System.Threading.Tasks;
 using Imcodec.ObjectProperty.TypeCache;
 using Imview.Core.Database.Collections;
-using Imview.Core.Database.Models;
 using Avalonia.Controls;
 using Imview.Core.Views;
 
@@ -58,24 +57,7 @@ public static class DatabaseTemplateSerializer {
                 return null;
             }
 
-            // Save template and metadata to separate collections
-            var questTemplateId = await QuestTemplateCollection.SaveQuestTemplateAsync(template, result.Name);
-            if (questTemplateId == null) {
-                return null;
-            }
-
-            var metadata = new QuestMetadata {
-                QuestTemplateId = questTemplateId,
-                Name = result.Name,
-                Description = result.Description,
-                CreatedAt = DateTime.UtcNow,
-                ModifiedAt = DateTime.UtcNow,
-                CreatedBy = Environment.UserName,
-                ModifiedBy = Environment.UserName
-            };
-
-            await QuestMetadataCollection.SaveQuestMetadataAsync(metadata);
-            return questTemplateId;
+            return await QuestCollection.UpsertQuestAsync(template, result.Name, result.Description);
         }
         catch (Exception ex) {
             Console.WriteLine($"Error saving quest template: {ex.Message}");
@@ -109,23 +91,7 @@ public static class DatabaseTemplateSerializer {
                 return false;
             }
 
-            // Update template and metadata in separate collections
-            var templateUpdated = await QuestTemplateCollection.UpdateQuestTemplateAsync(template);
-            if (!templateUpdated) {
-                return false;
-            }
-
-            // Update metadata
-            var metadata = await QuestMetadataCollection.GetQuestMetadataByTemplateIdAsync(questId);
-            if (metadata != null) {
-                metadata.Name = result.Name;
-                metadata.Description = result.Description;
-                metadata.ModifiedAt = DateTime.UtcNow;
-                metadata.ModifiedBy = Environment.UserName;
-                await QuestMetadataCollection.UpdateQuestMetadataAsync(metadata);
-            }
-
-            return true;
+            return await QuestCollection.UpdateQuestAsync(questId, template, result.Name, result.Description);
         }
         catch (Exception ex) {
             Console.WriteLine($"Error updating quest template: {ex.Message}");
@@ -140,7 +106,7 @@ public static class DatabaseTemplateSerializer {
     /// <returns>The quest template or null if not found</returns>
     public static async Task<QuestTemplate?> LoadTemplateAsync(string questId) {
         try {
-            return await QuestTemplateCollection.GetQuestTemplateAsync(questId);
+            return (await QuestCollection.GetQuestAsync(questId))?.Template;
         }
         catch (Exception ex) {
             Console.WriteLine($"Error loading quest template: {ex.Message}");

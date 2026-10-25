@@ -194,6 +194,9 @@ FirstRun = True
 [ClientFiles]
 RevisionsUrl = https://patcher.r10.one/revisions
 SelectedRevision = 
+
+[DataPack]
+Path = 
 ";
 
         File.WriteAllText(iniFilePath, defaultConfig);
