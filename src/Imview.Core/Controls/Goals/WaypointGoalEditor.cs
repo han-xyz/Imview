@@ -63,8 +63,8 @@ public class WaypointGoalEditor : GoalEditorWindowBase {
         if (WaypointTemplate != null) {
             _zoneEntryBox.IsChecked = WaypointTemplate.m_zoneEntry;
             _zoneExitBox.IsChecked = WaypointTemplate.m_zoneExit;
-            _zoneTagBox.Text = WaypointTemplate.m_zoneTag?.ToString() ?? string.Empty;
-            _proximityTagBox.Text = WaypointTemplate.m_proximityTag?.ToString() ?? string.Empty;
+            _zoneTagBox.Text = WaypointTemplate.m_zoneTag.ToString();
+            _proximityTagBox.Text = WaypointTemplate.m_proximityTag.ToString();
         }
     }
 

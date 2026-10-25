@@ -33,6 +33,7 @@ using Imview.Core.Common.Constants;
 using Imview.Core.Common.Utils;
 using System.Threading.Tasks;
 using Imview.Core.Controls.Base;
+using Imview.Core.Common.Extensions;
 
 namespace Imview.Core.Controls;
 
@@ -379,9 +380,9 @@ public class GoalCompleteLogicEditor : EditorWindowBase<GoalCompleteLogic> {
     private void Save() {
         try {
             // Convert string collections to ByteString lists
-            _logic.m_goalsAND = _goalsAnd.ToList();
-            _logic.m_goalsOR = _goalsOr.ToList();
-            _logic.m_goalsToAdd = _goalsToAdd.ToList();
+            _logic.m_goalsAND = _goalsAnd.ToByteStrings();
+            _logic.m_goalsOR = _goalsOr.ToByteStrings();
+            _logic.m_goalsToAdd = _goalsToAdd.ToByteStrings();
 
             // Set other properties
             _logic.m_requiredORCount = (int) (_requiredOrCountBox.Value ?? 1);

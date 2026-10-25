@@ -23,6 +23,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using Imcodec.ObjectProperty.TypeCache;
 using Imview.Core.ViewModels;
+using Imview.Core.Common.Extensions;
 
 namespace Imview.Core.Models;
 
@@ -81,7 +82,7 @@ public class TriggerVisualizationObject
     {
         OriginalTrigger = trigger;
 #pragma warning disable CS8601 // Possible null reference assignment
-        Name = trigger.m_triggerName != null ? trigger.m_triggerName.ToString() ?? "Unnamed Trigger" : "Unnamed Trigger";
+        Name = trigger.m_triggerName.OrIfEmpty("Unnamed Trigger");
 #pragma warning restore CS8601
 
         // Ensure Name is never null or empty
@@ -97,7 +98,7 @@ public class TriggerVisualizationObject
         UnknownUint = trigger.unknown_uint_3;
 
 #pragma warning disable CS8601 // Possible null reference assignment
-        UnknownString = trigger.unknown_str_3 != null ? trigger.unknown_str_3.ToString() ?? string.Empty : string.Empty;
+        UnknownString = trigger.unknown_str_3.ToString();
 #pragma warning restore CS8601
 
         // Determine trigger type - this is a simplified classification
@@ -118,7 +119,7 @@ public class TriggerVisualizationObject
         if (trigger.m_activateEvents != null)
         {
             ActivateEvents = trigger.m_activateEvents
-                .Where(e => e != null)
+                .Where(e => !e.IsEmpty)
                 .Select(e => e.ToString() ?? string.Empty)
                 .Where(e => !string.IsNullOrEmpty(e))
                 .ToList();
@@ -127,7 +128,7 @@ public class TriggerVisualizationObject
         if (trigger.m_fireEvents != null)
         {
             FireEvents = trigger.m_fireEvents
-                .Where(e => e != null)
+                .Where(e => !e.IsEmpty)
                 .Select(e => e.ToString() ?? string.Empty)
                 .Where(e => !string.IsNullOrEmpty(e))
                 .ToList();
@@ -136,7 +137,7 @@ public class TriggerVisualizationObject
         if (trigger.m_deactivateEvents != null)
         {
             DeactivateEvents = trigger.m_deactivateEvents
-                .Where(e => e != null)
+                .Where(e => !e.IsEmpty)
                 .Select(e => e.ToString() ?? string.Empty)
                 .Where(e => !string.IsNullOrEmpty(e))
                 .ToList();
@@ -145,7 +146,7 @@ public class TriggerVisualizationObject
         if (trigger.m_unknown != null)
         {
             UnknownEvents = trigger.m_unknown
-                .Where(e => e != null)
+                .Where(e => !e.IsEmpty)
                 .Select(e => e.ToString() ?? string.Empty)
                 .Where(e => !string.IsNullOrEmpty(e))
                 .ToList();

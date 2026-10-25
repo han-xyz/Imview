@@ -42,7 +42,7 @@ public sealed partial class SpiralDbFileStore : IWorldStore {
             if (Directory.Exists(dir)) {
                 foreach (var file in Directory.GetFiles(dir, "*.json").Order(StringComparer.Ordinal)) {
                     var record = await TryReadAsync(file, records.Category.RecordType);
-                    if (record is null) {
+                    if (record is null || string.IsNullOrEmpty(records.Category.KeyOf(record))) {
                         failedFiles.Add(file);
                     } else if (records.Find(records.Category.KeyOf(record)) is not null) {
                         duplicateFiles.Add(file);
@@ -65,14 +65,20 @@ public sealed partial class SpiralDbFileStore : IWorldStore {
 
     public async Task SaveAsync<T>(T record) where T : class {
         var records = RecordsOf<T>();
-        var path = records.PathOf(record) ?? NewFilePath(records.Category, records.Category.KeyOf(record));
+        var path = records.SourcePathOf(record) ?? NewFilePath(records.Category, records.Category.KeyOf(record));
 
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var tempPath = path + ".tmp";
-        await using (var stream = File.Create(tempPath)) {
-            await JsonSerializer.SerializeAsync(stream, record, typeof(T), SpiralJsonOptions.WriteOptions);
+        try {
+            await using (var stream = File.Create(tempPath)) {
+                await JsonSerializer.SerializeAsync(stream, record, typeof(T), SpiralJsonOptions.WriteOptions);
+                stream.WriteByte((byte) '\n');
+            }
+            File.Move(tempPath, path, overwrite: true);
+        } catch {
+            File.Delete(tempPath);
+            throw;
         }
-        File.Move(tempPath, path, overwrite: true);
 
         records.Add(record, path);
     }
@@ -103,7 +109,7 @@ public sealed partial class SpiralDbFileStore : IWorldStore {
         try {
             await using var stream = File.OpenRead(file);
             return await JsonSerializer.DeserializeAsync(stream, recordType, SpiralJsonOptions.Options);
-        } catch (JsonException) {
+        } catch (Exception) {
             return null;
         }
     }
@@ -115,7 +121,7 @@ public sealed partial class SpiralDbFileStore : IWorldStore {
 
     private sealed class CategoryRecords(WorldCategory category) {
         private readonly Dictionary<string, object> _byKey = new(StringComparer.OrdinalIgnoreCase);
-        private readonly Dictionary<string, string> _pathByKey = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<object, Source> _sourceByRecord = new(ReferenceEqualityComparer.Instance);
 
         public WorldCategory Category { get; } = category;
 
@@ -125,23 +131,45 @@ public sealed partial class SpiralDbFileStore : IWorldStore {
 
         public object? Find(string key) => _byKey.GetValueOrDefault(key);
 
-        public string? PathOf(object record) => _pathByKey.GetValueOrDefault(Category.KeyOf(record));
+        public string? SourcePathOf(object record) {
+            var key = Category.KeyOf(record);
+            var holder = _byKey.GetValueOrDefault(key);
+            if (_sourceByRecord.TryGetValue(record, out var source)) {
+                if (holder is not null && holder != record) {
+                    throw new InvalidOperationException(
+                        $"Cannot rename {Category.RecordType.Name} to '{key}': {_sourceByRecord[holder].Path} already holds that key.");
+                }
+                return source.Path;
+            }
+            return holder is null ? null : _sourceByRecord[holder].Path;
+        }
 
         public void Add(object record, string path) {
+            if (_sourceByRecord.Remove(record, out var previous)) {
+                _byKey.Remove(previous.Key);
+            }
             var key = Category.KeyOf(record);
+            if (_byKey.TryGetValue(key, out var replaced)) {
+                _sourceByRecord.Remove(replaced);
+            }
             _byKey[key] = record;
-            _pathByKey[key] = path;
+            _sourceByRecord[record] = new Source(key, path);
         }
 
         public string? Remove(string key) {
-            _byKey.Remove(key);
-            return _pathByKey.Remove(key, out var path) ? path : null;
+            if (!_byKey.Remove(key, out var record)) {
+                return null;
+            }
+            _sourceByRecord.Remove(record, out var source);
+            return source.Path;
         }
 
         public void Clear() {
             _byKey.Clear();
-            _pathByKey.Clear();
+            _sourceByRecord.Clear();
         }
+
+        private readonly record struct Source(string Key, string Path);
     }
 
 }

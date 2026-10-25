@@ -28,6 +28,7 @@ using Imview.Core.Common.Constants;
 using Imview.Core.Services;
 using System;
 using System.Threading.Tasks;
+using Imview.Core.Common.Extensions;
 
 namespace Imview.Core.Views;
 
@@ -66,9 +67,9 @@ public partial class QuestEditorWindow : Avalonia.Controls.Window {
             
             if (isReadOnly) {
                 MakeEditorReadOnly(editor);
-                Title = $"View Quest: {_originalTemplate.m_questTitle ?? _originalTemplate.m_questName}";
+                Title = $"View Quest: {_originalTemplate.m_questTitle.OrIfEmpty(_originalTemplate.m_questName)}";
             } else {
-                Title = $"Edit Quest: {_originalTemplate.m_questTitle ?? _originalTemplate.m_questName}";
+                Title = $"Edit Quest: {_originalTemplate.m_questTitle.OrIfEmpty(_originalTemplate.m_questName)}";
             }
         }
     }

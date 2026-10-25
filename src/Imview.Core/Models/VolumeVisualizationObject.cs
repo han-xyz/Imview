@@ -21,6 +21,7 @@ modification, are permitted provided that the following conditions are met:
 using System.Collections.Generic;
 using System.Linq;
 using Imcodec.ObjectProperty.TypeCache;
+using Imview.Core.Common.Extensions;
 
 namespace Imview.Core.Models;
 
@@ -43,12 +44,12 @@ public class VolumeVisualizationObject
     {
         OriginalVolume = volume;
 #pragma warning disable CS8601 // Possible null reference assignment
-        Name = volume.m_volumeName != null ? volume.m_volumeName.ToString() : $"Volume_{volume.m_templateID}";
+        Name = volume.m_volumeName.OrIfEmpty($"Volume_{volume.m_templateID}");
         X = volume.m_locationX;
         Y = volume.m_locationY;
         Z = volume.m_locationZ;
         TemplateID = volume.m_templateID;
-        PrimitiveType = volume.m_primitiveType != null ? volume.m_primitiveType.ToString() ?? "Unknown" : "Unknown";
+        PrimitiveType = volume.m_primitiveType.OrIfEmpty("Unknown");
         // Ensure PrimitiveType is never null or empty
         if (string.IsNullOrEmpty(PrimitiveType))
         {
@@ -63,7 +64,7 @@ public class VolumeVisualizationObject
         if (volume.m_enterEvents != null)
         {
             EnterEvents = volume.m_enterEvents
-                .Where(e => e != null)
+                .Where(e => !e.IsEmpty)
                 .Select(e => e.ToString() ?? string.Empty)
                 .Where(e => !string.IsNullOrEmpty(e))
                 .ToList();
@@ -72,7 +73,7 @@ public class VolumeVisualizationObject
         if (volume.m_exitEvents != null)
         {
             ExitEvents = volume.m_exitEvents
-                .Where(e => e != null)
+                .Where(e => !e.IsEmpty)
                 .Select(e => e.ToString() ?? string.Empty)
                 .Where(e => !string.IsNullOrEmpty(e))
                 .ToList();

@@ -272,7 +272,7 @@ public sealed class QuestBuilder {
 
                         // Add or update the prep dialog
                         var existingPrepDialog = dialogList.m_dialogs?.FirstOrDefault(d =>
-                            d.m_dialogTag?.Equals("Prep", StringComparison.OrdinalIgnoreCase) == true);
+                            d.m_dialogTag.ToString().Equals("Prep", StringComparison.OrdinalIgnoreCase) == true);
 
                         if (existingPrepDialog != null) {
                             // Update existing prep dialog
@@ -299,7 +299,7 @@ public sealed class QuestBuilder {
     private static void AddCompletionDialogToQuestTemplate(QuestTemplate template, List<ActorDialogPacket> packets) {
         // Find the quest ID by searching for a template with the same quest name
         var questIDEntry = s_questTemplateIDMap.FirstOrDefault(kvp =>
-            kvp.Key.m_questName?.Equals(template.m_questName, StringComparison.OrdinalIgnoreCase) == true);
+            kvp.Key.m_questName.ToString().Equals(template.m_questName, StringComparison.OrdinalIgnoreCase) == true);
 
         if (questIDEntry.Key == null) {
             return; // No matching quest found in the map
@@ -341,7 +341,7 @@ public sealed class QuestBuilder {
 
                         // Add or update the completion dialog
                         var existingCompletionDialog = dialogList.m_dialogs?.FirstOrDefault(d =>
-                            d.m_dialogTag?.Equals("Completion", StringComparison.OrdinalIgnoreCase) == true);
+                            d.m_dialogTag.ToString().Equals("Completion", StringComparison.OrdinalIgnoreCase) == true);
 
                         if (existingCompletionDialog != null) {
                             // Update existing completion dialog
@@ -409,7 +409,7 @@ public sealed class QuestBuilder {
 
                         // Add or update the dialog for this tag
                         var existingDialog = dialogList.m_dialogs?.FirstOrDefault(d =>
-                            d.m_dialogTag?.Equals(dialogTag, StringComparison.OrdinalIgnoreCase) == true);
+                            d.m_dialogTag.ToString().Equals(dialogTag, StringComparison.OrdinalIgnoreCase) == true);
 
                         if (existingDialog != null) {
                             // Update existing dialog
@@ -516,7 +516,7 @@ public sealed class QuestBuilder {
 
             foreach (var madlib in madlibBlock?.m_madlibs ?? []) {
                 if (madlib is MadlibArgT_ByteString stringMadlib) {
-                    switch (stringMadlib.m_madlibToken?.ToUpperInvariant()) {
+                    switch (stringMadlib.m_madlibToken.ToString().ToUpperInvariant()) {
                         case "TALLYTEXT":
                             descriptor = stringMadlib.m_madlibArgument;
                             break;

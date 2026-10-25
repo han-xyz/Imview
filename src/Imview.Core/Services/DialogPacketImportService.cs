@@ -251,7 +251,7 @@ public sealed class DialogPacketImportService {
                             PersonaName = packet.PersonaName ?? string.Empty,
                             ActorDialog = actorDialog,
                             DialogEntry = CreateDialogEntryWrapper(npcEntry),
-                            DialogKey = npcEntry.m_dialog ?? "",
+                            DialogKey = npcEntry.m_dialog.ToString(),
                             ResolvedPersonaName = resolvedPersonaName,
                             EntryIndex = i,
                             TotalEntries = totalEntries
@@ -321,18 +321,18 @@ public sealed class DialogPacketImportService {
     private static DialogEntryWrapper CreateDialogEntryWrapper(NPCDialogEntry npcEntry) {
         return new DialogEntryWrapper {
             // NPCDialogEntry specific
-            PersonaName = npcEntry.m_personaName ?? "",
-            NameOverride = npcEntry.m_nameOverride ?? "",
-            GuiDisplay = npcEntry.m_guiDisplay ?? "",
+            PersonaName = npcEntry.m_personaName.ToString(),
+            NameOverride = npcEntry.m_nameOverride.ToString(),
+            GuiDisplay = npcEntry.m_guiDisplay.ToString(),
 
             // Core ActorDialogEntry Properties
-            DialogKey = npcEntry.m_dialog ?? "",
-            Picture = npcEntry.m_picture ?? "",
-            SoundFile = npcEntry.m_soundFile ?? "",
-            Action = npcEntry.m_action ?? "",
-            DialogEvent = npcEntry.m_dialogEvent ?? "",
+            DialogKey = npcEntry.m_dialog.ToString(),
+            Picture = npcEntry.m_picture.ToString(),
+            SoundFile = npcEntry.m_soundFile.ToString(),
+            Action = npcEntry.m_action.ToString(),
+            DialogEvent = npcEntry.m_dialogEvent.ToString(),
             ActorTemplateID = npcEntry.m_actorTemplateID,
-            CameraName = npcEntry.m_cameraName ?? "",
+            CameraName = npcEntry.m_cameraName.ToString(),
 
             // Camera Properties
             InterpolationDuration = npcEntry.m_interpolationDuration,
@@ -342,13 +342,13 @@ public sealed class DialogPacketImportService {
             Pitch = npcEntry.m_pitch,
             Yaw = npcEntry.m_yaw,
             Roll = npcEntry.m_roll,
-            CameraShakeType = npcEntry.m_cameraShakeType ?? "",
+            CameraShakeType = npcEntry.m_cameraShakeType.ToString(),
             CameraShakeDuration = npcEntry.m_cameraShakeDuration,
             CameraShakeAmplitude = npcEntry.m_cameraShakeAmplitude,
 
             // Camera Behavior
             BypassCameraOnReview = npcEntry.m_bypassCameraOnReview,
-            CameraZoneName = npcEntry.m_cameraZoneName ?? "",
+            CameraZoneName = npcEntry.m_cameraZoneName.ToString(),
             Duration = npcEntry.m_duration,
             Delay = npcEntry.m_delay,
             CameraHidePlayers = npcEntry.m_cameraHidePlayers,
@@ -360,24 +360,24 @@ public sealed class DialogPacketImportService {
             WalkAwayUseCurrentFacing = npcEntry.m_walkAwayUseCurrentFacing,
 
             // Stand-in and Camera
-            StandInPlayerTag = npcEntry.m_standInPlayerTag ?? "",
+            StandInPlayerTag = npcEntry.m_standInPlayerTag.ToString(),
             FadeOutCamera = npcEntry.m_fadeOutCamera,
             SnapCameraToPlayerAtExit = npcEntry.m_snapCameraToPlayerAtExit,
-            SecondaryCameraName = npcEntry.m_secondaryCameraName ?? "",
+            SecondaryCameraName = npcEntry.m_secondaryCameraName.ToString(),
             SecondaryInterpolationDuration = npcEntry.m_secondaryInterpolationDuration,
 
             // Lists and Arrays
-            NpcStandInList = new List<string>(npcEntry.m_npcStandInList ?? new List<string>()),
-            DialogAnimationList = new List<string>(npcEntry.m_dialogAnimationList ?? new List<string>()),
-            DialogTurningList = new List<string>(npcEntry.m_dialogTurningList ?? new List<string>()),
+            NpcStandInList = npcEntry.m_npcStandInList?.Select(s => s.ToString()).ToList() ?? [],
+            DialogAnimationList = npcEntry.m_dialogAnimationList?.Select(s => s.ToString()).ToList() ?? [],
+            DialogTurningList = npcEntry.m_dialogTurningList?.Select(s => s.ToString()).ToList() ?? [],
 
             // NPC Behavior
             NpcYawOffsetInDegrees = npcEntry.m_npcYawOffsetInDegrees,
             AllowPlayerToMove = npcEntry.m_allowPlayerToMove,
 
             // Audio Properties
-            SoundEffectFile = npcEntry.m_soundEffectFile ?? "",
-            MusicFile = npcEntry.m_musicFile ?? "",
+            SoundEffectFile = npcEntry.m_soundEffectFile.ToString(),
+            MusicFile = npcEntry.m_musicFile.ToString(),
             NonStackableMusic = npcEntry.m_nonStackableMusic,
             NonRepeatableMusic = npcEntry.m_nonRepeatableMusic,
             PlayMusicAtSFXVolume = npcEntry.m_playMusicAtSFXVolume,
@@ -389,9 +389,9 @@ public sealed class DialogPacketImportService {
             DontReleaseCameraAtExit = npcEntry.m_dontReleaseCameraAtExit,
             DisableBackButton = npcEntry.m_disableBackButton,
             EnableExitButton = npcEntry.m_enableExitButton,
-            CameraFadeType = npcEntry.m_cameraFadeType ?? "",
+            CameraFadeType = npcEntry.m_cameraFadeType.ToString(),
             CameraFadeTime = npcEntry.m_cameraFadeTime,
-            IdleAnimation = npcEntry.m_idleAnimation ?? "",
+            IdleAnimation = npcEntry.m_idleAnimation.ToString(),
 
             // Spam and Music Control
             SpamTime = npcEntry.m_spamTime,

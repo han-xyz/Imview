@@ -56,7 +56,7 @@ public class ResPlaySoundEditor : EditorWindowBase<ResPlaySound> {
         Background = EditorConstants.DEFAULT_WINDOW_BACKGROUND;
         
         _soundNameInput = new TextBox {
-            Text = _result.m_soundName != null ? _result.m_soundName.ToString() : "",
+            Text = _result.m_soundName.ToString(),
             Watermark = "Sound file name or path"
         };
         

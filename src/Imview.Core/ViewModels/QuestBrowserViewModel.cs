@@ -36,6 +36,7 @@ using Avalonia.Controls;
 using Avalonia.VisualTree;
 using Imcodec.ObjectProperty.TypeCache;
 using Imview.Core.Controls.Templates;
+using Imview.Core.Common.Extensions;
 
 namespace Imview.Core.ViewModels;
 
@@ -288,7 +289,7 @@ public class QuestBrowserViewModel : ViewModelBase {
                 // Create a quest document for the loaded template
                 SelectedQuest = new QuestDocument {
                     Id = "local",
-                    Name = template.m_questName?.ToString() ?? "Loaded Quest",
+                    Name = template.m_questName.OrIfEmpty("Loaded Quest"),
                     Description = "Loaded from local file",
                     Template = template,
                     CreatedAt = DateTime.UtcNow,
@@ -403,7 +404,7 @@ public class QuestBrowserViewModel : ViewModelBase {
     private void UpdateQuestEditor() {
         if (SelectedQuest?.Template != null) {
             // Sync template name to quest name if template has a name
-            var templateName = SelectedQuest.Template.m_questName?.ToString();
+            var templateName = SelectedQuest.Template.m_questName.ToString();
             if (!string.IsNullOrEmpty(templateName) && SelectedQuest.Name != templateName) {
                 SelectedQuest.Name = templateName;
             }

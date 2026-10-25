@@ -25,6 +25,7 @@ using System;
 using Imview.Core.Common.Constants;
 using System.Collections.Generic;
 using System.Linq;
+using Imview.Core.Common.Extensions;
 
 namespace Imview.Core.Controls.Goals;
 
@@ -62,7 +63,7 @@ public class BountyGoalEditor : GoalEditorWindowBase {
         mainPanel.Children.Add(CreateActionButtons(Save, Cancel));
 
         if (BountyTemplate != null) {
-            _adjectivesBox.Text = string.Join(", ", BountyTemplate.m_npcAdjectives ?? new List<string>());
+            _adjectivesBox.Text = string.Join(", ", BountyTemplate.m_npcAdjectives ?? []);
             _bountyTotalBox.Text = BountyTemplate.m_bountyTotal.ToString();
             _bountyTypeBox.SelectedItem = BountyTemplate.m_bountyType;
         }
@@ -89,7 +90,7 @@ public class BountyGoalEditor : GoalEditorWindowBase {
             .ToList();
 
         if (int.TryParse(_bountyTotalBox.Text, out int bountyTotal)) {
-            BountyTemplate.m_npcAdjectives = adjectives;
+            BountyTemplate.m_npcAdjectives = adjectives.ToByteStrings();
             BountyTemplate.m_bountyTotal = bountyTotal;
             BountyTemplate.m_bountyType = (BOUNTY_TYPE) _bountyTypeBox.SelectedItem!;
             // Note: m_goalType is set by the base class SaveValues() from the ComboBox selection

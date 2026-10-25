@@ -1,5 +1,7 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Imcodec.IO;
+using Imcodec.ObjectProperty.Bit;
 using Imcodec.ObjectProperty.TypeCache;
 using Imcodec.Types;
 using Imview.Core.Data;
@@ -13,6 +15,9 @@ public sealed class SpiralDbFileStoreTests : IDisposable {
 
     private static readonly string FixtureRoot = Path.Combine(AppContext.BaseDirectory, "Fixtures", "spiraldb");
 
+    private static readonly string CloneRoot = Environment.GetEnvironmentVariable("SPIRALDB_CLONE")
+        ?? "/tmp/claude-1000/-home-han-Projects-Wizard101/d1cd5b35-ecfd-46b6-a7c8-7c495221e75d/scratchpad/spiraldb";
+
     private readonly string _tempRoot = Path.Combine(Path.GetTempPath(), "imview-tests-" + Guid.NewGuid().ToString("N"));
 
     public void Dispose() {
@@ -21,26 +26,65 @@ public sealed class SpiralDbFileStoreTests : IDisposable {
         }
     }
 
-    [Fact]
-    public Task RoundTrip_QuestTemplate() => AssertRoundTrips<QuestTemplate>();
+    public static TheoryData<string> FixtureFiles() {
+        var files = new TheoryData<string>();
+        foreach (var file in Directory.GetFiles(FixtureRoot, "*.json", SearchOption.AllDirectories).Order()) {
+            files.Add(Path.GetRelativePath(FixtureRoot, file));
+        }
+        return files;
+    }
 
-    [Fact]
-    public Task RoundTrip_QuestMetadata() => AssertRoundTrips<QuestMetadata>();
+    [Theory]
+    [MemberData(nameof(FixtureFiles))]
+    public async Task SaveUnchanged_RewritesSourceWithoutLoss(string fixture) {
+        var directory = Path.GetDirectoryName(fixture)!;
+        var source = Path.Combine(FixtureRoot, fixture);
+        var copy = Path.Combine(_tempRoot, fixture);
+        Directory.CreateDirectory(Path.GetDirectoryName(copy)!);
+        File.Copy(source, copy);
+        var store = new SpiralDbFileStore(_tempRoot);
+        await store.LoadAsync();
+        var asLoaded = await SerializeOnlyRecordAsync(store, directory);
 
-    [Fact]
-    public Task RoundTrip_DropTable() => AssertRoundTrips<DropTable>();
+        await SaveOnlyRecordAsync(store, directory);
 
-    [Fact]
-    public Task RoundTrip_NpcInventory() => AssertRoundTrips<NpcInventory>();
+        Assert.Equal([copy], Directory.GetFiles(Path.GetDirectoryName(copy)!));
+        var loss = JsonTree.FirstLoss(JsonTree.ParseFile(source), JsonTree.ParseFile(copy));
+        Assert.True(loss is null, loss);
+        var reloaded = new SpiralDbFileStore(_tempRoot);
+        await reloaded.LoadAsync();
+        Assert.Equal(asLoaded, await SerializeOnlyRecordAsync(reloaded, directory));
+    }
 
-    [Fact]
-    public Task RoundTrip_NpcSpellInventory() => AssertRoundTrips<NpcSpellInventory>();
+    [CloneFact]
+    public async Task Clone_QuestTemplatesLoadAndSaveWithoutLoss() {
+        var report = await new SpiralDbFileStore(CloneRoot).LoadAsync();
+        Assert.DoesNotContain(report.FailedFiles, file => file.Contains($"{Path.DirectorySeparatorChar}QuestTemplates{Path.DirectorySeparatorChar}"));
 
-    [Fact]
-    public Task RoundTrip_CreatureSpellbook() => AssertRoundTrips<CreatureSpellbook>();
+        var questDir = Path.Combine(_tempRoot, "QuestTemplates");
+        Directory.CreateDirectory(questDir);
+        var sample = Directory.GetFiles(Path.Combine(CloneRoot, "QuestTemplates"), "*.json")
+            .Order(StringComparer.Ordinal)
+            .OrderBy(_ => Random.Shared.Next())
+            .Take(20)
+            .ToList();
+        foreach (var file in sample) {
+            File.Copy(file, Path.Combine(questDir, Path.GetFileName(file)));
+        }
+        var store = new SpiralDbFileStore(_tempRoot);
+        await store.LoadAsync();
 
-    [Fact]
-    public Task RoundTrip_ZoneTransfer() => AssertRoundTrips<WizardZoneData>();
+        foreach (var quest in await store.GetAllAsync<QuestTemplate>()) {
+            await store.SaveAsync(quest);
+        }
+
+        foreach (var file in sample) {
+            var loss = JsonTree.FirstLoss(
+                JsonTree.ParseFile(file),
+                JsonTree.ParseFile(Path.Combine(questDir, Path.GetFileName(file))));
+            Assert.True(loss is null, $"{Path.GetFileName(file)}: {loss}");
+        }
+    }
 
     [Fact]
     public async Task Save_Existing_RewritesSourceFile() {
@@ -60,6 +104,24 @@ public sealed class SpiralDbFileStoreTests : IDisposable {
     }
 
     [Fact]
+    public async Task Save_RenamedRecord_RewritesSourceFile() {
+        CopyFixturesTo(_tempRoot);
+        var store = new SpiralDbFileStore(_tempRoot);
+        await store.LoadAsync();
+
+        var dropTable = (await store.GetAsync<DropTable>("test"))!;
+        dropTable.Name = "Renamed";
+        await store.SaveAsync(dropTable);
+
+        Assert.Equal(["droptables_test.json"], Directory.GetFiles(Path.Combine(_tempRoot, "DropTables")).Select(Path.GetFileName));
+        Assert.Null(await store.GetAsync<DropTable>("test"));
+        Assert.Same(dropTable, await store.GetAsync<DropTable>("renamed"));
+        var reloaded = new SpiralDbFileStore(_tempRoot);
+        await reloaded.LoadAsync();
+        Assert.NotNull(await reloaded.GetAsync<DropTable>("Renamed"));
+    }
+
+    [Fact]
     public async Task Save_New_UsesTypeKeyName() {
         var store = new SpiralDbFileStore(_tempRoot);
         await store.LoadAsync();
@@ -75,14 +137,17 @@ public sealed class SpiralDbFileStoreTests : IDisposable {
     [Fact]
     public async Task Load_SkipsAndReportsBadFile() {
         CopyFixturesTo(_tempRoot);
-        var badFile = Path.Combine(_tempRoot, "DropTables", "droptables_broken.json");
-        await File.WriteAllTextAsync(badFile, "{ \"Name\": ");
+        var brokenFile = Path.Combine(_tempRoot, "DropTables", "droptables_broken.json");
+        await File.WriteAllTextAsync(brokenFile, "{ \"Name\": ");
+        var keylessFile = Path.Combine(_tempRoot, "CreatureSpellbook", "keyless.json");
+        await File.WriteAllTextAsync(keylessFile, "{}");
         var store = new SpiralDbFileStore(_tempRoot);
 
         var report = await store.LoadAsync();
 
-        Assert.Equal([badFile], report.FailedFiles);
-        Assert.All(report.CountsByDirectory.Values, count => Assert.Equal(1, count));
+        Assert.Equal([keylessFile, brokenFile], report.FailedFiles.Order(StringComparer.Ordinal));
+        Assert.Equal(1, report.CountsByDirectory["DropTables"]);
+        Assert.Equal(1, report.CountsByDirectory["CreatureSpellbook"]);
         Assert.Equal(7, report.CountsByDirectory.Count);
         Assert.Single(await store.GetAllAsync<DropTable>());
     }
@@ -108,48 +173,65 @@ public sealed class SpiralDbFileStoreTests : IDisposable {
         Assert.Contains("SpellTemplateIds", await File.ReadAllTextAsync(original));
     }
 
-    // Expected text is what Imlight's Imcodec converters write: GIDConverter
-    // `writer.WriteNumberValue(value.Full)`, ByteStringJsonConverter `writer.WriteStringValue(value.ToString())`.
+    // Expected text is what Imlight's Imcodec converters write: GID `WriteNumberValue(value.Full)`,
+    // ByteString and WideByteString `WriteStringValue(value.ToString())`, Bui2/4/5/7, U24, S24 `WriteNumberValue(value.Value)`.
     [Fact]
     public void Converters_MatchImlightWireFormat() {
-        Assert.Equal("12345678901234", JsonSerializer.Serialize(new GID(12345678901234), SpiralJsonOptions.Options));
-        Assert.Equal("\"GH-HERO\"", JsonSerializer.Serialize(new ByteString("GH-HERO"), SpiralJsonOptions.Options));
+        var options = SpiralJsonOptions.WriteOptions;
+        Assert.Equal("12345678901234", JsonSerializer.Serialize(new GID(12345678901234), options));
+        Assert.Equal("\"GH-HERO\"", JsonSerializer.Serialize(new ByteString("GH-HERO"), options));
+        Assert.Equal("\"Mooshu's\"", JsonSerializer.Serialize(new WideByteString("Mooshu's"), options));
+        Assert.Equal("3", JsonSerializer.Serialize(new Bui2(3), options));
+        Assert.Equal("15", JsonSerializer.Serialize(new Bui4(15), options));
+        Assert.Equal("31", JsonSerializer.Serialize(new Bui5(31), options));
+        Assert.Equal("127", JsonSerializer.Serialize(new Bui7(127), options));
+        Assert.Equal("16777215", JsonSerializer.Serialize(new U24(16777215), options));
+        Assert.Equal("-8388608", JsonSerializer.Serialize(new S24(-8388608), options));
         Assert.Equal(42UL, JsonSerializer.Deserialize<GID>("\"42\"", SpiralJsonOptions.Options).Full);
-        Assert.Equal(0UL, JsonSerializer.Deserialize<GID>("null", SpiralJsonOptions.Options).Full);
         Assert.Equal("GH-HERO", JsonSerializer.Deserialize<ByteString>("\"GH-HERO\"", SpiralJsonOptions.Options).ToString());
     }
 
     [Fact]
     public async Task QuestTemplate_PolymorphicGoalsSurvive() {
+        var sourceFile = Path.Combine(FixtureRoot, "QuestTemplates", "questtemplates_GH-HERO-C03-005.json");
         var source = new SpiralDbFileStore(FixtureRoot);
         await source.LoadAsync();
-        var quest = Assert.Single(await source.GetAllAsync<QuestTemplate>());
+        var quest = (await source.GetAsync<QuestTemplate>("GH-HERO-C03-005"))!;
 
         var target = new SpiralDbFileStore(_tempRoot);
         await target.SaveAsync(quest);
 
-        var sourceFile = Directory.GetFiles(Path.Combine(FixtureRoot, "QuestTemplates")).Single();
         var savedFile = Directory.GetFiles(Path.Combine(_tempRoot, "QuestTemplates")).Single();
         var expected = GoalTypeDiscriminators(sourceFile);
         Assert.NotEmpty(expected);
         Assert.Equal(expected, GoalTypeDiscriminators(savedFile));
     }
 
-    private async Task AssertRoundTrips<T>() where T : class {
-        var source = new SpiralDbFileStore(FixtureRoot);
-        await source.LoadAsync();
-        var original = Assert.Single(await source.GetAllAsync<T>());
-
-        var target = new SpiralDbFileStore(_tempRoot);
-        await target.LoadAsync();
-        await target.SaveAsync(original);
-        var reloaded = new SpiralDbFileStore(_tempRoot);
-        await reloaded.LoadAsync();
-
-        Assert.Equal(
-            JsonSerializer.Serialize(original, SpiralJsonOptions.Options),
-            JsonSerializer.Serialize(Assert.Single(await reloaded.GetAllAsync<T>()), SpiralJsonOptions.Options));
+    private static async Task SaveOnlyRecordAsync(SpiralDbFileStore store, string directory) {
+        switch (directory) {
+            case "QuestTemplates": await store.SaveAsync(Assert.Single(await store.GetAllAsync<QuestTemplate>())); break;
+            case "QuestMetadatas": await store.SaveAsync(Assert.Single(await store.GetAllAsync<QuestMetadata>())); break;
+            case "DropTables": await store.SaveAsync(Assert.Single(await store.GetAllAsync<DropTable>())); break;
+            case "NpcInventory": await store.SaveAsync(Assert.Single(await store.GetAllAsync<NpcInventory>())); break;
+            case "NpcSpellInventory": await store.SaveAsync(Assert.Single(await store.GetAllAsync<NpcSpellInventory>())); break;
+            case "CreatureSpellbook": await store.SaveAsync(Assert.Single(await store.GetAllAsync<CreatureSpellbook>())); break;
+            case "ZoneTransfer": await store.SaveAsync(Assert.Single(await store.GetAllAsync<WizardZoneData>())); break;
+            default: throw new ArgumentException($"No record type for fixture directory {directory}.");
+        }
     }
+
+    private static async Task<string> SerializeOnlyRecordAsync(SpiralDbFileStore store, string directory) => directory switch {
+        "QuestTemplates" => Serialize(Assert.Single(await store.GetAllAsync<QuestTemplate>())),
+        "QuestMetadatas" => Serialize(Assert.Single(await store.GetAllAsync<QuestMetadata>())),
+        "DropTables" => Serialize(Assert.Single(await store.GetAllAsync<DropTable>())),
+        "NpcInventory" => Serialize(Assert.Single(await store.GetAllAsync<NpcInventory>())),
+        "NpcSpellInventory" => Serialize(Assert.Single(await store.GetAllAsync<NpcSpellInventory>())),
+        "CreatureSpellbook" => Serialize(Assert.Single(await store.GetAllAsync<CreatureSpellbook>())),
+        "ZoneTransfer" => Serialize(Assert.Single(await store.GetAllAsync<WizardZoneData>())),
+        _ => throw new ArgumentException($"No record type for fixture directory {directory}.")
+    };
+
+    private static string Serialize<T>(T record) => JsonSerializer.Serialize(record, SpiralJsonOptions.WriteOptions);
 
     private static List<string> GoalTypeDiscriminators(string path) {
         using var document = JsonDocument.Parse(File.ReadAllText(path));
@@ -163,6 +245,14 @@ public sealed class SpiralDbFileStoreTests : IDisposable {
             var destination = Path.Combine(root, Path.GetRelativePath(FixtureRoot, file));
             Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
             File.Copy(file, destination);
+        }
+    }
+
+    private sealed class CloneFactAttribute : FactAttribute {
+        public CloneFactAttribute() {
+            if (!Directory.Exists(CloneRoot)) {
+                Skip = $"spiraldb clone not found at {CloneRoot} (set SPIRALDB_CLONE)";
+            }
         }
     }
 

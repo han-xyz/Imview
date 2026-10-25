@@ -166,7 +166,7 @@ public sealed class TemplateManifestService {
         _objectNameToIdMap = new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase);
         
         foreach (var templateLocation in _templateManifest.m_serializedTemplates) {
-            if (templateLocation?.m_filename == null) {
+            if (templateLocation is null || templateLocation.m_filename.IsEmpty) {
                 continue;
             }
 

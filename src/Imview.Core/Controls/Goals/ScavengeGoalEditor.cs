@@ -26,6 +26,7 @@ using Imcodec.ObjectProperty.TypeCache;
 using Imview.Core.Common.Constants;
 using System.Linq;
 using Imcodec.IO;
+using Imview.Core.Common.Extensions;
 
 namespace Imview.Core.Controls.Goals;
 
@@ -58,7 +59,7 @@ public class ScavengeGoalEditor : GoalEditorWindowBase {
         mainPanel.Children.Add(CreateActionButtons(Save, Cancel));
 
         if (ScavengeTemplate != null) {
-            _itemAdjectivesBox.Text = string.Join(", ", ScavengeTemplate.m_itemAdjectives ?? new List<string>());
+            _itemAdjectivesBox.Text = string.Join(", ", ScavengeTemplate.m_itemAdjectives ?? []);
             _itemTotalBox.Text = ScavengeTemplate.m_itemTotal.ToString();
         }
     }
@@ -82,7 +83,7 @@ public class ScavengeGoalEditor : GoalEditorWindowBase {
             .ToList();
 
         if (int.TryParse(_itemTotalBox.Text, out int itemTotal)) {
-            ScavengeTemplate.m_itemAdjectives = adjectives.Select(a => a.ToString()).ToList();
+            ScavengeTemplate.m_itemAdjectives = adjectives.Select(a => a.ToString()).ToByteStrings();
             ScavengeTemplate.m_itemTotal = itemTotal;
             // Note: m_goalType is set by the base class SaveValues() from the ComboBox selection
         }

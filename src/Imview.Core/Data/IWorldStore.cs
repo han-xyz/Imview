@@ -7,7 +7,9 @@ namespace Imview.Core.Data;
 /// World data by category. <typeparamref name="T"/> is one of the registered record types
 /// (QuestTemplate, QuestMetadata, DropTable, NpcInventory, NpcSpellInventory, CreatureSpellbook,
 /// WizardZoneData); keys are the record's own key (quest name, table name, template ID, deck name,
-/// zone name, quest template ID), compared case-insensitively.
+/// zone name, quest template ID), compared case-insensitively. Get methods return the store's own
+/// instances: <see cref="SaveAsync{T}"/> writes an instance back to the file it was loaded from, even
+/// after its key was edited.
 /// </summary>
 public interface IWorldStore {
     Task<WorldStoreLoadReport> LoadAsync();

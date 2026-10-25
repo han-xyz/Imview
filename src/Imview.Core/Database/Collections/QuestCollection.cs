@@ -245,7 +245,7 @@ public static class QuestCollection {
                 }
                 
                 // Check if template name matches search term
-                if (template.m_questName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) {
+                if (template.m_questName.ToString().Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) {
                     results.Add(new QuestDocument {
                         Id = templateId,
                         Name = template.m_questName,

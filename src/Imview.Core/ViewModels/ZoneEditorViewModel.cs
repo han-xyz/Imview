@@ -50,6 +50,7 @@ using Imview.Core.Database;
 using Imview.Core.Database.Services;
 using Imview.Core.Controls;
 using Imcodec.IO;
+using Imview.Core.Common.Extensions;
 
 namespace Imview.Core.ViewModels;
 
@@ -1790,7 +1791,7 @@ public void SetScrollViewer(ScrollViewer scrollViewer)
             }
 
             var templateId = (ulong)SelectedCoreObject.m_templateID;
-            var npcName = SelectedCoreObject.m_zoneTag ?? $"NPC_{templateId}";
+            var npcName = SelectedCoreObject.m_zoneTag.OrIfEmpty($"NPC_{templateId}");
 
             // Load existing inventory data
             MessageService.Info("Loading NPC inventory data...").Send();
@@ -1853,7 +1854,7 @@ public void SetScrollViewer(ScrollViewer scrollViewer)
             }
 
             var templateId = (ulong)SelectedCoreObject.m_templateID;
-            var npcName = SelectedCoreObject.m_zoneTag ?? $"NPC_{templateId}";
+            var npcName = SelectedCoreObject.m_zoneTag.OrIfEmpty($"NPC_{templateId}");
 
             // Load existing spell inventory data
             MessageService.Info("Loading NPC spell inventory data...").Send();
@@ -1997,7 +1998,7 @@ public void SetScrollViewer(ScrollViewer scrollViewer)
                     // Add to general objects list
                     var zoneObjectItem = new ZoneObjectItem
                     {
-                        Name = obj.m_zoneTag ?? $"Object_{obj.m_templateID}",
+                        Name = obj.m_zoneTag.OrIfEmpty($"Object_{obj.m_templateID}"),
                         Type = DetermineObjectType(obj),
                         TemplateID = (ulong)obj.m_templateID,
                         Location = obj.m_location,
@@ -5449,14 +5450,14 @@ public void UpdateCanvasTransform()
             // First try GameObjectTemplate specifically
             if (serializer.Deserialize<GameObjectTemplate>(templateData.Value.ToArray(), 1, out var gameObjectTemplate) && gameObjectTemplate != null)
             {
-                Console.WriteLine($"Successfully loaded GameObjectTemplate: {gameObjectTemplate.GetType().Name} for {coreObject.m_zoneTag ?? "Unknown"}");
+                Console.WriteLine($"Successfully loaded GameObjectTemplate: {gameObjectTemplate.GetType().Name} for {coreObject.m_zoneTag.OrIfEmpty("Unknown")}");
                 return gameObjectTemplate;
             }
             
             // Fallback to generic PropertyClass deserialization
             if (serializer.Deserialize<PropertyClass>(templateData.Value.ToArray(), 1, out var template) && template != null)
             {
-                Console.WriteLine($"Successfully loaded template as PropertyClass: {template.GetType().Name} for {coreObject.m_zoneTag ?? "Unknown"}");
+                Console.WriteLine($"Successfully loaded template as PropertyClass: {template.GetType().Name} for {coreObject.m_zoneTag.OrIfEmpty("Unknown")}");
                 return template;
             }
             
@@ -5624,8 +5625,8 @@ public void UpdateCanvasTransform()
         if (template is GameObjectTemplate gameObjectTemplate)
         {
             // Check for specific creature properties
-            var displayName = gameObjectTemplate.m_displayName?.ToString() ?? "";
-            var objectName = gameObjectTemplate.m_objectName?.ToString() ?? "";
+            var displayName = gameObjectTemplate.m_displayName.ToString();
+            var objectName = gameObjectTemplate.m_objectName.ToString();
             
             if (!string.IsNullOrEmpty(displayName))
                 return $"Creature: {displayName}";
@@ -5649,7 +5650,7 @@ public void UpdateCanvasTransform()
 
     private string DetermineObjectType(CoreObjectInfo obj)
     {
-        var name = obj.m_zoneTag?.ToLower() ?? "";
+        var name = obj.m_zoneTag.ToString().ToLower();
 
         // Use Dragon tool logic: Check if it's a volume/trigger first
         if (IsVolume(obj)) return "Volume";
@@ -5668,7 +5669,7 @@ public void UpdateCanvasTransform()
     
     private string DetermineSpawnType(SpawnObjectInfo spawn)
     {
-        var name = spawn.m_zoneTag?.ToLower() ?? "";
+        var name = spawn.m_zoneTag.ToString().ToLower();
         
         // Basic spawn type detection
         if (name.Contains("mob") || name.Contains("enemy") || name.Contains("creature"))
@@ -5710,7 +5711,7 @@ public void UpdateCanvasTransform()
     private bool IsVolume(CoreObjectInfo obj)
     {
         // Volumes are objects that create collision/trigger areas
-        var name = obj.m_zoneTag?.ToLower() ?? "";
+        var name = obj.m_zoneTag.ToString().ToLower();
         return name.Contains("volume") || 
                name.Contains("trigger") || 
                name.Contains("area") ||
@@ -5722,7 +5723,7 @@ public void UpdateCanvasTransform()
 
     private bool IsProfessor(CoreObjectInfo obj)
     {
-        var name = obj.m_zoneTag?.ToLower() ?? "";
+        var name = obj.m_zoneTag.ToString().ToLower();
         return name.Contains("professor") || 
                name.Contains("teacher") || 
                name.Contains("trainer") ||
@@ -5731,7 +5732,7 @@ public void UpdateCanvasTransform()
 
     private bool IsNPC(CoreObjectInfo obj)
     {
-        var name = obj.m_zoneTag?.ToLower() ?? "";
+        var name = obj.m_zoneTag.ToString().ToLower();
         // Generic NPC detection - any object with a character-like name that isn't a professor
         return !string.IsNullOrEmpty(name) && 
                !IsProfessor(obj) && 
@@ -6707,7 +6708,7 @@ public class ObjectFlagService
         }
 
         // Fallback to name-based detection for additional flags
-        var name = coreObject.m_zoneTag?.ToLower() ?? "";
+        var name = coreObject.m_zoneTag.ToString().ToLower();
         
         // Note: Shopkeeper flags are now only assigned based on database inventory data
         // Name-based shopkeeper detection was removed to avoid false positives

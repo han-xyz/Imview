@@ -44,7 +44,7 @@ public static class DatabaseTemplateSerializer {
 
         try {
             // Get quest name from template or prompt user
-            var questName = template.m_questName?.ToString();
+            var questName = template.m_questName.ToString();
             if (string.IsNullOrWhiteSpace(questName)) {
                 questName = "New Quest";
             }

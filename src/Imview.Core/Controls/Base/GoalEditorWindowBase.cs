@@ -33,6 +33,7 @@ using Avalonia.Layout;
 using System.Collections.Generic;
 using Imview.Core.Controls.Results;
 using Imview.Core.Controls.Templates;
+using Imview.Core.Common.Extensions;
 
 namespace Imview.Core.Controls.Base;
 
@@ -154,13 +155,13 @@ public abstract class GoalEditorWindowBase : EditorWindowBase<GoalTemplate> {
     }
 
     protected virtual void InitializeValues() {
-        GoalNameBox.Text = Template.m_goalName?.ToString();
+        GoalNameBox.Text = Template.m_goalName.ToString();
         GoalNameIdBox.Value = Template.m_goalNameID;
-        GoalTitleBox.Text = Template.m_goalTitle?.ToString();
-        LocationNameBox.Text = Template.m_locationName?.ToString();
-        DisplayImage1Box.Text = Template.m_displayImage1?.ToString();
-        DisplayImage2Box.Text = Template.m_displayImage2?.ToString();
-        DestinationZoneBox.Text = Template.m_destinationZone?.ToString();
+        GoalTitleBox.Text = Template.m_goalTitle.ToString();
+        LocationNameBox.Text = Template.m_locationName.ToString();
+        DisplayImage1Box.Text = Template.m_displayImage1.ToString();
+        DisplayImage2Box.Text = Template.m_displayImage2.ToString();
+        DestinationZoneBox.Text = Template.m_destinationZone.ToString();
         ClientTagsBox.Text = Template.m_clientTags?.ToCommaSeparatedString();
         GenericEventsBox.Text = Template.m_genericEvents?.ToCommaSeparatedString();
 
@@ -207,8 +208,8 @@ public abstract class GoalEditorWindowBase : EditorWindowBase<GoalTemplate> {
             Template.m_displayImage2 = new ByteString(DisplayImage2Box.Text ?? string.Empty);
             Template.m_destinationZone = new ByteString(DestinationZoneBox.Text ?? string.Empty);
 
-            Template.m_clientTags = ClientTagsBox.Text?.SplitCommaSeparated() ?? [];
-            Template.m_genericEvents = GenericEventsBox.Text?.SplitCommaSeparated() ?? [];
+            Template.m_clientTags = (ClientTagsBox.Text?.SplitCommaSeparated() ?? []).ToByteStrings();
+            Template.m_genericEvents = (GenericEventsBox.Text?.SplitCommaSeparated() ?? []).ToByteStrings();
 
             Template.m_autoQualify = AutoQualifyBox.IsChecked ?? false;
             Template.m_autoComplete = AutoCompleteBox.IsChecked ?? false;

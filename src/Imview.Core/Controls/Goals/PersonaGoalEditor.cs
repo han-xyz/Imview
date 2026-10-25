@@ -55,7 +55,7 @@ public class PersonaGoalEditor : GoalEditorWindowBase {
         mainPanel.Children.Add(CreateActionButtons(Save, Cancel));
 
         if (PersonaTemplate != null) {
-            _personaNameBox.Text = PersonaTemplate.m_personaName?.ToString() ?? string.Empty;
+            _personaNameBox.Text = PersonaTemplate.m_personaName.ToString();
             _usePatronBox.IsChecked = PersonaTemplate.m_usePatron;
         }
     }

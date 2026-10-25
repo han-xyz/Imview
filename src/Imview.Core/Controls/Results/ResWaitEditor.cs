@@ -45,7 +45,7 @@ public class ResWaitEditor : EditorWindowBase<ResWait> {
         Background = EditorConstants.DEFAULT_WINDOW_BACKGROUND;
         
         _secondsToWaitInput = new NumericUpDown {
-            Value = _result.m_secondsToWait,
+            Value = (decimal) _result.m_secondsToWait,
             Minimum = 0,
             Maximum = uint.MaxValue,
             Increment = 1,

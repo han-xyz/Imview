@@ -28,6 +28,7 @@ using System.Text.Json;
 using Imcodec.ObjectProperty;
 using Imview.Core.Database.Collections;
 using Imview.Core.Views;
+using Imview.Core.Common.Extensions;
 
 namespace Imview.Core.Services;
 
@@ -102,7 +103,7 @@ public static class TemplateSerializer {
             // Create save file dialog using StorageProvider API.
             var options = new FilePickerSaveOptions {
                 Title = "Save Quest Template",
-                SuggestedFileName = SanitizeFileName(template.m_questName?.ToString() ?? "NewQuest") + VIEW_FILE_EXTENSION,
+                SuggestedFileName = SanitizeFileName(template.m_questName.OrIfEmpty("NewQuest")) + VIEW_FILE_EXTENSION,
                 FileTypeChoices = [
                     new("Imview Template Files") {
                         Patterns = ["*.view"]

@@ -41,6 +41,7 @@ using Avalonia.ReactiveUI;
 using Imview.Core.Views;
 using Imview.Core.Controls.Results;
 using Imview.Core.Models;
+using Imview.Core.Common.Extensions;
 
 namespace Imview.Core.Controls.Templates;
 
@@ -113,7 +114,7 @@ public partial class QuestTemplateEditor : UserControl {
         // Create goal wrappers with IsStartGoal property,
         _goals = new ObservableCollection<GoalTemplateWrapper>(
             (_template.m_goals ?? []).Select(g => {
-                var isStart = _template.m_startGoals?.Any(sg => sg.ToString() == g.m_goalName?.ToString()) ?? false;
+                var isStart = _template.m_startGoals?.Any(sg => sg.ToString() == g.m_goalName.ToString()) ?? false;
                 return new GoalTemplateWrapper(g, isStart);
             })
         );
@@ -275,7 +276,7 @@ public partial class QuestTemplateEditor : UserControl {
 
             // Goal name text display
             var goalText = new TextBlock {
-                Text = goal.Goal.m_goalName?.ToString() ?? $"Goal ({goal.Goal.m_goalType})",
+                Text = goal.Goal.m_goalName.OrIfEmpty($"Goal ({goal.Goal.m_goalType})"),
                 VerticalAlignment = VerticalAlignment.Center
             };
 
@@ -740,7 +741,7 @@ public partial class QuestTemplateEditor : UserControl {
         };
 
     private void InitializeValues() {
-        _questTitleValue = _template.m_questTitle?.ToString() ?? "";
+        _questTitleValue = _template.m_questTitle.ToString();
         UpdateQuestTitleDisplay();
         _questLevelBox.Value = _template.m_questLevel;
 
@@ -748,8 +749,8 @@ public partial class QuestTemplateEditor : UserControl {
         _questDialogEditor.DialogList = _template.m_dialogList as ActorDialogList;
         _questDialogEditor.QuestTitle = _questTitleValue;
 
-        _onStartScriptBox.Text = _template.m_onStartQuestScript?.ToString();
-        _onEndScriptBox.Text = _template.m_onEndQuestScript?.ToString();
+        _onStartScriptBox.Text = _template.m_onStartQuestScript.ToString();
+        _onEndScriptBox.Text = _template.m_onEndQuestScript.ToString();
 
         _isHiddenBox.IsChecked = _template.m_isHidden;
         _noQuestHelperBox.IsChecked = _template.m_noQuestHelper;
@@ -794,7 +795,7 @@ public partial class QuestTemplateEditor : UserControl {
         try {
             // Get all goal names for selection in the editor
             var goalNames = _goals
-                .Select(wrapper => wrapper.Goal.m_goalName?.ToString() ?? string.Empty)
+                .Select(wrapper => wrapper.Goal.m_goalName.ToString())
                 .Where(name => !string.IsNullOrEmpty(name))
                 .ToList()!;
 
@@ -905,7 +906,7 @@ public partial class QuestTemplateEditor : UserControl {
         // Save starting goals.
         _template.m_startGoals = _goals
             .Where(wrapper => wrapper.IsStartGoal)
-            .Select(wrapper => wrapper.Goal.m_goalName?.ToString() ?? string.Empty)
+            .Select(wrapper => wrapper.Goal.m_goalName)
             .ToList();
 
         // Save goal logic.
@@ -955,7 +956,7 @@ public partial class QuestTemplateEditor : UserControl {
 
         // Create goal wrappers with IsStartGoal property.
         foreach (var goal in _template.m_goals ?? []) {
-            var isStart = _template.m_startGoals?.Any(sg => sg.ToString() == goal.m_goalName?.ToString()) ?? false;
+            var isStart = _template.m_startGoals?.Any(sg => sg.ToString() == goal.m_goalName.ToString()) ?? false;
             _goals.Add(new GoalTemplateWrapper(goal, isStart));
         }
 

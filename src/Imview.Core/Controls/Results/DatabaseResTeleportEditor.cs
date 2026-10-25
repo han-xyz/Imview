@@ -34,6 +34,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Raven.Client.Documents;
+using Imview.Core.Common.Extensions;
 
 namespace Imview.Core.Controls.Results;
 
@@ -374,7 +375,7 @@ public class DatabaseResTeleportEditor : EditorWindowBase<ResTeleport>
             
             if (zoneData?.m_locationList != null && zoneData.m_locationList.Count > 0)
             {
-                var locationNames = zoneData.m_locationList.Select(loc => loc.m_locName?.ToString() ?? "Unnamed").ToList();
+                var locationNames = zoneData.m_locationList.Select(loc => loc.m_locName.OrIfEmpty("Unnamed")).ToList();
                 
                 // Update the location ComboBox on the UI thread
                 Avalonia.Threading.Dispatcher.UIThread.Invoke(() =>
@@ -534,7 +535,7 @@ public class DatabaseResTeleportEditor : EditorWindowBase<ResTeleport>
             
             foreach (var loc in zoneData.m_locationList.Where(l => l != null))
             {
-                var locName = loc.m_locName?.ToString() ?? "Unnamed";
+                var locName = loc.m_locName.OrIfEmpty("Unnamed");
                 var xDiff = Math.Abs(loc.m_location.X - x);
                 var yDiff = Math.Abs(loc.m_location.Y - y);
                 var zDiff = Math.Abs(loc.m_location.Z - z);
@@ -573,7 +574,7 @@ public class DatabaseResTeleportEditor : EditorWindowBase<ResTeleport>
                 var (zoneData, _, _, _, _, _, _, _) = await _zoneDataService.LoadZoneDataAsync(selectedZone);
                 
                 var location = zoneData?.m_locationList?.FirstOrDefault(loc => 
-                    loc.m_locName?.ToString() == selectedLocationName);
+                    loc.m_locName.ToString() == selectedLocationName);
                 
                 if (location != null)
                 {

@@ -34,7 +34,7 @@ public class ResAddMagicXPEditor : EditorWindowBase<ResAddMagicXP> {
     
     private readonly ResAddMagicXP _result;
     private readonly NumericUpDown _experienceInput;
-    private readonly NumericUpDown _magicSchoolInput;
+    private readonly TextBox _magicSchoolInput;
     private readonly TextBox _sourceTypeInput;
 
     public ResAddMagicXPEditor(ResAddMagicXP? result = null) 
@@ -53,12 +53,9 @@ public class ResAddMagicXPEditor : EditorWindowBase<ResAddMagicXP> {
             FormatString = "N0"
         };
         
-        _magicSchoolInput = new NumericUpDown {
-            Minimum = 0,
-            Maximum = 100,
-            Value = (decimal)_result.m_magicSchool,
-            FormatString = "F2",
-            Increment = 0.1m
+        _magicSchoolInput = new TextBox {
+            Text = _result.m_magicSchool.ToString(),
+            Watermark = "Magic school"
         };
         
         _sourceTypeInput = new TextBox {
@@ -109,7 +106,7 @@ public class ResAddMagicXPEditor : EditorWindowBase<ResAddMagicXP> {
     private void Save() {
         try {
             _result.m_experience = (int)(_experienceInput.Value ?? 0);
-            _result.m_magicSchool = (float)(_magicSchoolInput.Value ?? 0);
+            _result.m_magicSchool = _magicSchoolInput.Text ?? string.Empty;
             _result.m_sourceType = _sourceTypeInput.Text ?? string.Empty;
             
             ResultSource.SetResult(_result);

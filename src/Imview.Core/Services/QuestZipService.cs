@@ -31,6 +31,7 @@ using Imcodec.ObjectProperty.TypeCache;
 using Imview.Core.Database.Collections;
 using Imview.Core.Services;
 using Imview.Core.Views;
+using Imview.Core.Common.Extensions;
 
 namespace Imview.Core.Services;
 
@@ -83,9 +84,7 @@ public static class QuestZipService {
             
             foreach (var template in templates) {
                 questCounter++;
-                var questName = SanitizeFileName(template.m_questName?.ToString() ?? 
-                                                template.m_questTitle?.ToString() ?? 
-                                                $"Quest_{questCounter}");
+                var questName = SanitizeFileName(template.m_questName.OrIfEmpty(template.m_questTitle.OrIfEmpty($"Quest_{questCounter}")));
                 
                 var tempFilePath = Path.Combine(tempDir, $"{questName}.view");
                 tempFiles.Add(tempFilePath);
@@ -171,9 +170,7 @@ public static class QuestZipService {
             foreach (var template in questList) {
                 try {
                     // Generate a descriptive name for the quest
-                    var questName = template.m_questName?.ToString() ?? 
-                                  template.m_questTitle?.ToString() ?? 
-                                  $"Quest_FromPacket_{DateTime.Now:HHmmss}";
+                    var questName = template.m_questName.OrIfEmpty(template.m_questTitle.OrIfEmpty($"Quest_FromPacket_{DateTime.Now:HHmmss}"));
 
                     var description = $"Quest imported from packet capture on {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
 
@@ -194,7 +191,7 @@ public static class QuestZipService {
                     }
                 }
                 catch (Exception ex) {
-                    var questName = template.m_questName?.ToString() ?? "Unknown Quest";
+                    var questName = template.m_questName.OrIfEmpty("Unknown Quest");
                     failedQuests.Add($"{questName} ({ex.Message})");
                     Console.WriteLine($"Error saving quest {questName}: {ex.Message}");
                 }
@@ -256,7 +253,7 @@ public static class QuestZipService {
             };
 
             if (success && selectedOption != QuestSaveOption.None) {
-                var questName = template.m_questName?.ToString() ?? template.m_questTitle?.ToString() ?? "Quest";
+                var questName = template.m_questName.OrIfEmpty(template.m_questTitle.OrIfEmpty("Quest"));
                 var message = selectedOption switch {
                     QuestSaveOption.SaveLocal => $"Successfully saved quest '{questName}' to file.",
                     QuestSaveOption.Upload => $"Successfully uploaded quest '{questName}' to database.",
@@ -281,9 +278,7 @@ public static class QuestZipService {
 
     private static async Task<bool> SaveSingleQuestLocal(QuestTemplate template, Avalonia.Controls.Window parentWindow) {
         try {
-            var questName = SanitizeFileName(template.m_questName?.ToString() ?? 
-                                           template.m_questTitle?.ToString() ?? 
-                                           $"Quest_{DateTime.Now:HHmmss}");
+            var questName = SanitizeFileName(template.m_questName.OrIfEmpty(template.m_questTitle.OrIfEmpty($"Quest_{DateTime.Now:HHmmss}")));
             
             // Create save file dialog for .view file.
             var options = new FilePickerSaveOptions {
@@ -336,9 +331,7 @@ public static class QuestZipService {
             }
 
             // Generate a descriptive name for the quest
-            var questName = template.m_questName?.ToString() ?? 
-                          template.m_questTitle?.ToString() ?? 
-                          $"Quest_FromPacket_{DateTime.Now:HHmmss}";
+            var questName = template.m_questName.OrIfEmpty(template.m_questTitle.OrIfEmpty($"Quest_FromPacket_{DateTime.Now:HHmmss}"));
 
             var description = $"Quest imported from packet capture on {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
 

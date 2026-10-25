@@ -384,8 +384,8 @@ public class TallyCounterEditor : UserControl
         _enabledCheckBox.IsChecked = _isEnabled;
 
         _percentChanceBox.Value = (decimal)_tallyCounter.m_percentChance;
-        _descriptorValue = _tallyCounter.m_descriptor?.ToString() ?? "";
-        _descriptor2Value = _tallyCounter.m_descriptor2?.ToString() ?? "";
+        _descriptorValue = _tallyCounter.m_descriptor.ToString();
+        _descriptor2Value = _tallyCounter.m_descriptor2.ToString();
         _countBox.Value = _tallyCounter.m_count;
 
         _tallyResults.Clear();

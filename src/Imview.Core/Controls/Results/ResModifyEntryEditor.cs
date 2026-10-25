@@ -49,7 +49,7 @@ public class ResModifyEntryEditor : EditorWindowBase<ResModifyEntry> {
         Background = EditorConstants.DEFAULT_WINDOW_BACKGROUND;
         
         _entryNameInput = new TextBox {
-            Text = _result.m_entryName != null ? _result.m_entryName.ToString() : "",
+            Text = _result.m_entryName.ToString(),
             Watermark = "Entry name to modify"
         };
         
