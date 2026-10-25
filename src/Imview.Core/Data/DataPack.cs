@@ -1,19 +1,22 @@
+using System;
 using System.Threading.Tasks;
-using Imview.Core.Common;
 
 namespace Imview.Core.Data;
 
 public static class DataPack {
 
     /// <summary>
-    /// Whether a data pack folder is set; when it is, waits for <see cref="WorldStoreProvider.Current"/> to finish loading it.
+    /// Whether the data pack folder is set and exists; when it does, waits for <see cref="WorldStoreProvider.Current"/> to finish loading it.
     /// </summary>
     public static async Task<bool> IsLoadedAsync() {
-        if (string.IsNullOrWhiteSpace(ConfigurationManager.GetSetting(WorldStoreProvider.DataPackPathSetting))) {
+        IWorldStore store;
+        try {
+            store = WorldStoreProvider.Current;
+        } catch (InvalidOperationException) {
             return false;
         }
 
-        await WorldStoreProvider.Current.LoadAsync();
+        await store.LoadAsync();
         return true;
     }
 }

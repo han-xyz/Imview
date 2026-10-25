@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
 using Imview.Core.Common;
 
@@ -8,7 +9,7 @@ namespace Imview.Core.Data;
 /// <summary>
 /// The one <see cref="IWorldStore"/> the app works on: a <see cref="SpiralDbFileStore"/> over the
 /// folder in the <c>DataPack.Path</c> setting, loaded on first use. <see cref="Current"/> throws
-/// <see cref="InvalidOperationException"/> when the setting is empty; <see cref="Reload"/> re-reads
+/// <see cref="InvalidOperationException"/> when the setting is empty or names no folder; <see cref="Reload"/> re-reads
 /// the setting and the folder on the next access.
 /// </summary>
 public static class WorldStoreProvider {
@@ -36,6 +37,9 @@ public static class WorldStoreProvider {
         var path = ConfigurationManager.GetSetting(DataPackPathSetting);
         if (string.IsNullOrWhiteSpace(path)) {
             throw new InvalidOperationException($"No data pack folder is set: set {DataPackPathSetting} in config.ini.");
+        }
+        if (!Directory.Exists(path)) {
+            throw new InvalidOperationException($"The data pack folder '{path}' in {DataPackPathSetting} does not exist.");
         }
         return new LoadedOnceStore(new SpiralDbFileStore(path));
     }

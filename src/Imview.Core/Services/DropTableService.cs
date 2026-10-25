@@ -33,18 +33,19 @@ public class DropTableService {
 
     public async Task<List<DropTable>> GetAllDropTablesAsync() {
         var tables = await WorldStoreProvider.Current.GetAllAsync<DropTable>();
-        return tables.OrderBy(dt => dt.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        return tables.OrderBy(dt => dt.Name, StringComparer.OrdinalIgnoreCase).Select(WorldRecordCopy.Detached).ToList();
     }
 
     /// <summary>
-    /// Gets a drop table by name; a RavenDB id (<c>droptables/&lt;name&gt;</c>) is accepted too
+    /// Gets a copy of a drop table by name; a RavenDB id (<c>droptables/&lt;name&gt;</c>) is accepted too
     /// </summary>
     public async Task<DropTable?> GetDropTableAsync(string name) {
         if (string.IsNullOrWhiteSpace(name)) {
             return null;
         }
 
-        return await WorldStoreProvider.Current.GetAsync<DropTable>(NameOf(name));
+        var table = await WorldStoreProvider.Current.GetAsync<DropTable>(NameOf(name));
+        return table == null ? null : WorldRecordCopy.Detached(table);
     }
 
     /// <returns>The new table's name</returns>
@@ -78,7 +79,7 @@ public class DropTableService {
     }
 
     /// <summary>
-    /// Saves a drop table: the stored table with the same name takes this one's values, or this one is added
+    /// Saves a copy of the drop table, replacing the stored table with the same name
     /// </summary>
     public async Task<bool> UpdateDropTableAsync(DropTable dropTable) {
         if (dropTable == null) {
@@ -90,18 +91,14 @@ public class DropTableService {
         }
 
         var store = WorldStoreProvider.Current;
-        var existing = await store.GetAsync<DropTable>(dropTable.Name);
-        if (existing == null) {
+        if (await store.GetAsync<DropTable>(dropTable.Name) == null) {
             dropTable.CreatedAt = DateTime.UtcNow;
             dropTable.CreatedBy = Environment.UserName;
-            existing = dropTable;
-        } else if (existing != dropTable) {
-            CopyEditableFields(dropTable, existing);
         }
 
-        existing.ModifiedAt = DateTime.UtcNow;
-        existing.ModifiedBy = Environment.UserName;
-        await store.SaveAsync(existing);
+        dropTable.ModifiedAt = DateTime.UtcNow;
+        dropTable.ModifiedBy = Environment.UserName;
+        await store.SaveAsync(WorldRecordCopy.Detached(dropTable));
         return true;
     }
 
@@ -237,18 +234,4 @@ public class DropTableService {
 
     private static string NameOf(string nameOrId)
         => nameOrId.StartsWith(LegacyIdPrefix, StringComparison.OrdinalIgnoreCase) ? nameOrId[LegacyIdPrefix.Length..] : nameOrId;
-
-    private static void CopyEditableFields(DropTable source, DropTable target) {
-        target.Description = source.Description;
-        target.RollChance = source.RollChance;
-        target.Weight = source.Weight;
-        target.NoneChance = source.NoneChance;
-        target.PityCounter = source.PityCounter;
-        target.MinGold = source.MinGold;
-        target.MaxGold = source.MaxGold;
-        target.ExperienceAmount = source.ExperienceAmount;
-        target.TrainingPoints = source.TrainingPoints;
-        target.GrantsPotionSlot = source.GrantsPotionSlot;
-        target.Items = source.Items;
-    }
 }

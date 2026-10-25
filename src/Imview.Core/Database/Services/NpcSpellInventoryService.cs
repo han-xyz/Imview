@@ -13,23 +13,15 @@ namespace Imview.Core.Database.Services {
     /// </summary>
     public static class NpcSpellInventoryService {
         public static async Task<NpcSpellInventory?> GetNpcSpellInventoryAsync(ulong templateId) {
-            return await WorldStoreProvider.Current.GetAsync<NpcSpellInventory>(templateId.ToString());
+            var inventory = await WorldStoreProvider.Current.GetAsync<NpcSpellInventory>(templateId.ToString());
+            return inventory == null ? null : WorldRecordCopy.Detached(inventory);
         }
 
         /// <summary>
-        /// Saves a spell inventory, replacing the spells of the inventory with the same template ID
+        /// Saves a copy of the spell inventory, replacing the spell inventory with the same template ID
         /// </summary>
         public static async Task<bool> SaveNpcSpellInventoryAsync(NpcSpellInventory spellInventory) {
-            var store = WorldStoreProvider.Current;
-            var existing = await GetNpcSpellInventoryAsync(spellInventory.TemplateID);
-            if (existing == null) {
-                existing = spellInventory;
-            } else if (existing != spellInventory) {
-                existing.Spells.Clear();
-                existing.Spells.AddRange(spellInventory.Spells);
-            }
-
-            await store.SaveAsync(existing);
+            await WorldStoreProvider.Current.SaveAsync(WorldRecordCopy.Detached(spellInventory));
             return true;
         }
 
@@ -54,7 +46,7 @@ namespace Imview.Core.Database.Services {
 
         public static async Task<List<NpcSpellInventory>> GetAllNpcSpellInventoriesAsync() {
             var inventories = await WorldStoreProvider.Current.GetAllAsync<NpcSpellInventory>();
-            return inventories.ToList();
+            return inventories.Select(WorldRecordCopy.Detached).ToList();
         }
     }
 }

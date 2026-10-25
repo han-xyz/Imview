@@ -6,11 +6,9 @@ using Imview.Core.Models;
 using Imview.Core.Services;
 using Xunit;
 
-// The services under test share WorldStoreProvider and ConfigurationManager, which are process-wide.
-[assembly: CollectionBehavior(DisableTestParallelization = true)]
-
 namespace Imview.Tests;
 
+[Collection(WorldStoreProviderCollection.Name)]
 public sealed class WorldServicesTests : IDisposable {
 
     private static readonly string FixtureRoot = Path.Combine(AppContext.BaseDirectory, "Fixtures", "spiraldb");
@@ -57,6 +55,30 @@ public sealed class WorldServicesTests : IDisposable {
         Assert.Null(await service.GetDropTableAsync("TEST-NEW"));
         Assert.DoesNotContain("droptables_TEST-NEW.json", FilesIn("DropTables"));
         Assert.NotNull(await service.GetDropTableAsync("droptables/test"));
+    }
+
+    [Fact]
+    public async Task DropTable_EditsDoNotReachStoreUntilSaved() {
+        var service = new DropTableService();
+        var table = await service.GetDropTableAsync("TEST");
+        Assert.NotNull(table);
+        var itemCount = table.Items.Count;
+
+        table.Description = "unsaved";
+        table.Items.Add(new DropItem { ItemId = "1" });
+
+        var again = await service.GetDropTableAsync("TEST");
+        Assert.Equal("", again?.Description);
+        Assert.Equal(itemCount, again!.Items.Count);
+        Assert.Equal("", (await service.GetAllDropTablesAsync()).Single().Description);
+
+        Assert.True(await service.UpdateDropTableAsync(table));
+        table.Description = "after save";
+
+        Assert.Equal("unsaved", (await service.GetDropTableAsync("TEST"))?.Description);
+        var fresh = await LoadFreshStoreAsync();
+        Assert.Equal("unsaved", (await fresh.GetAsync<DropTable>("TEST"))?.Description);
+        Assert.Equal(["droptables_test.json"], FilesIn("DropTables"));
     }
 
     [Fact]

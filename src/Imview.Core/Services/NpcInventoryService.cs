@@ -31,7 +31,8 @@ namespace Imview.Core.Services;
 /// </summary>
 public static class NpcInventoryService {
     public static async Task<NpcInventory?> GetNpcInventoryAsync(ulong templateId) {
-        return await WorldStoreProvider.Current.GetAsync<NpcInventory>(templateId.ToString());
+        var inventory = await WorldStoreProvider.Current.GetAsync<NpcInventory>(templateId.ToString());
+        return inventory == null ? null : WorldRecordCopy.Detached(inventory);
     }
 
     public static async Task<bool> HasNpcInventoryAsync(ulong templateId) {
@@ -39,18 +40,10 @@ public static class NpcInventoryService {
     }
 
     /// <summary>
-    /// Saves an NPC inventory, replacing the items of the inventory with the same template ID
+    /// Saves a copy of the NPC inventory, replacing the inventory with the same template ID
     /// </summary>
     public static async Task<bool> SaveNpcInventoryAsync(NpcInventory npcInventory) {
-        var store = WorldStoreProvider.Current;
-        var existing = await GetNpcInventoryAsync(npcInventory.TemplateID);
-        if (existing == null) {
-            existing = npcInventory;
-        } else {
-            existing.Inventory = npcInventory.Inventory;
-        }
-
-        await store.SaveAsync(existing);
+        await WorldStoreProvider.Current.SaveAsync(WorldRecordCopy.Detached(npcInventory));
         return true;
     }
 
@@ -61,6 +54,6 @@ public static class NpcInventoryService {
 
     public static async Task<NpcInventory[]> GetAllNpcInventoriesAsync() {
         var inventories = await WorldStoreProvider.Current.GetAllAsync<NpcInventory>();
-        return inventories.ToArray();
+        return inventories.Select(WorldRecordCopy.Detached).ToArray();
     }
 }

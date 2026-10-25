@@ -57,8 +57,8 @@ public static class CreatureDeckService {
         }
 
         var store = WorldStoreProvider.Current;
-        var doc = await store.GetAsync<CreatureSpellbook>(deck.DeckName)
-            ?? new CreatureSpellbook { DeckName = deck.DeckName };
+        var stored = await store.GetAsync<CreatureSpellbook>(deck.DeckName);
+        var doc = stored == null ? new CreatureSpellbook { DeckName = deck.DeckName } : WorldRecordCopy.Detached(stored);
         doc.SpellTemplateIds = deck.SpellTemplateIds.Select(id => (long) id).ToList();
         await store.SaveAsync(doc);
         return true;

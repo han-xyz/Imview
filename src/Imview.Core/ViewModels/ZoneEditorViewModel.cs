@@ -1707,7 +1707,7 @@ public void SetScrollViewer(ScrollViewer scrollViewer)
         try
         {
             IsWorldDatabaseReady = await DataPack.IsLoadedAsync();
-            WorldDatabaseStatusText = IsWorldDatabaseReady ? string.Empty : "No data pack folder is set.";
+            WorldDatabaseStatusText = IsWorldDatabaseReady ? string.Empty : "No data pack folder is set, or the folder does not exist.";
         }
         catch
         {
