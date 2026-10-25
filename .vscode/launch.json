@@ -6,7 +6,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/src/Imview.Core/bin/Debug/net9.0/Imview.Core.dll",
+            "program": "${workspaceFolder}/src/Imview.Core/bin/Debug/net10.0/Imview.Core.dll",
             "args": [],
             "cwd": "${workspaceFolder}",
             "stopAtEntry": false,

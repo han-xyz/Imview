@@ -48,8 +48,8 @@ public class ResWaitEditor : EditorWindowBase<ResWait> {
             Value = (decimal) _result.m_secondsToWait,
             Minimum = 0,
             Maximum = uint.MaxValue,
-            Increment = 1,
-            FormatString = "F0"
+            Increment = 0.5m,
+            FormatString = "F2"
         };
         
         InitializeComponent();
@@ -145,7 +145,7 @@ public class ResWaitEditor : EditorWindowBase<ResWait> {
     
     private void Save() {
         try {
-            var seconds = (uint)(_secondsToWaitInput.Value ?? 0);
+            var seconds = (double)(_secondsToWaitInput.Value ?? 0);
             
             if (seconds == 0) {
                 MessageService

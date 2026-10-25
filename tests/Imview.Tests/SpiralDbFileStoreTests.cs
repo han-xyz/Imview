@@ -15,8 +15,7 @@ public sealed class SpiralDbFileStoreTests : IDisposable {
 
     private static readonly string FixtureRoot = Path.Combine(AppContext.BaseDirectory, "Fixtures", "spiraldb");
 
-    private static readonly string CloneRoot = Environment.GetEnvironmentVariable("SPIRALDB_CLONE")
-        ?? "/tmp/claude-1000/-home-han-Projects-Wizard101/d1cd5b35-ecfd-46b6-a7c8-7c495221e75d/scratchpad/spiraldb";
+    private static readonly string? CloneRoot = Environment.GetEnvironmentVariable("SPIRALDB_CLONE");
 
     private readonly string _tempRoot = Path.Combine(Path.GetTempPath(), "imview-tests-" + Guid.NewGuid().ToString("N"));
 
@@ -58,16 +57,12 @@ public sealed class SpiralDbFileStoreTests : IDisposable {
 
     [CloneFact]
     public async Task Clone_QuestTemplatesLoadAndSaveWithoutLoss() {
-        var report = await new SpiralDbFileStore(CloneRoot).LoadAsync();
+        var report = await new SpiralDbFileStore(CloneRoot!).LoadAsync();
         Assert.DoesNotContain(report.FailedFiles, file => file.Contains($"{Path.DirectorySeparatorChar}QuestTemplates{Path.DirectorySeparatorChar}"));
 
         var questDir = Path.Combine(_tempRoot, "QuestTemplates");
         Directory.CreateDirectory(questDir);
-        var sample = Directory.GetFiles(Path.Combine(CloneRoot, "QuestTemplates"), "*.json")
-            .Order(StringComparer.Ordinal)
-            .OrderBy(_ => Random.Shared.Next())
-            .Take(20)
-            .ToList();
+        var sample = Directory.GetFiles(Path.Combine(CloneRoot!, "QuestTemplates"), "*.json");
         foreach (var file in sample) {
             File.Copy(file, Path.Combine(questDir, Path.GetFileName(file)));
         }
@@ -207,6 +202,19 @@ public sealed class SpiralDbFileStoreTests : IDisposable {
         Assert.Equal(expected, GoalTypeDiscriminators(savedFile));
     }
 
+    [Fact]
+    public async Task QuestTemplate_FractionalWaitSurvives() {
+        var source = new SpiralDbFileStore(FixtureRoot);
+        await source.LoadAsync();
+        var quest = (await source.GetAsync<QuestTemplate>("WC-CYCLOPS-SIDE-005"))!;
+
+        var target = new SpiralDbFileStore(_tempRoot);
+        await target.SaveAsync(quest);
+
+        var saved = await File.ReadAllTextAsync(Directory.GetFiles(Path.Combine(_tempRoot, "QuestTemplates")).Single());
+        Assert.Contains("\"m_secondsToWait\": 1.5", saved);
+    }
+
     private static async Task SaveOnlyRecordAsync(SpiralDbFileStore store, string directory) {
         switch (directory) {
             case "QuestTemplates": await store.SaveAsync(Assert.Single(await store.GetAllAsync<QuestTemplate>())); break;
@@ -250,8 +258,8 @@ public sealed class SpiralDbFileStoreTests : IDisposable {
 
     private sealed class CloneFactAttribute : FactAttribute {
         public CloneFactAttribute() {
-            if (!Directory.Exists(CloneRoot)) {
-                Skip = $"spiraldb clone not found at {CloneRoot} (set SPIRALDB_CLONE)";
+            if (CloneRoot is null || !Directory.Exists(CloneRoot)) {
+                Skip = "set SPIRALDB_CLONE to a spiraldb clone to run this test";
             }
         }
     }
