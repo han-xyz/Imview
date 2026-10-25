@@ -41,28 +41,22 @@ public static class DatabaseTemplateSerializer {
     public static async Task<string?> SaveTemplateAsync(QuestTemplate template, Avalonia.Controls.Window parentWindow) {
         ArgumentNullException.ThrowIfNull(template);
 
-        try {
-            // Get quest name from template or prompt user
-            var questName = template.m_questName.ToString();
-            if (string.IsNullOrWhiteSpace(questName)) {
-                questName = "New Quest";
-            }
-
-            // Create a simple input dialog to get quest name and description
-            var inputDialog = new QuestSaveDialog(questName, "");
-            var result = await inputDialog.ShowDialog<QuestSaveResult?>(parentWindow);
-            
-            if (result == null) {
-                // User cancelled
-                return null;
-            }
-
-            return await QuestCollection.UpsertQuestAsync(template, result.Name, result.Description);
+        // Get quest name from template or prompt user
+        var questName = template.m_questName.ToString();
+        if (string.IsNullOrWhiteSpace(questName)) {
+            questName = "New Quest";
         }
-        catch (Exception ex) {
-            Console.WriteLine($"Error saving quest template: {ex.Message}");
+
+        // Create a simple input dialog to get quest name and description
+        var inputDialog = new QuestSaveDialog(questName, "");
+        var result = await inputDialog.ShowDialog<QuestSaveResult?>(parentWindow);
+        
+        if (result == null) {
+            // User cancelled
             return null;
         }
+
+        return await QuestCollection.UpsertQuestAsync(template, result.Name, result.Description);
     }
 
     /// <summary>
@@ -75,28 +69,22 @@ public static class DatabaseTemplateSerializer {
     public static async Task<bool> UpdateTemplateAsync(string questId, QuestTemplate template, Avalonia.Controls.Window parentWindow) {
         ArgumentNullException.ThrowIfNull(template);
 
-        try {
-            // Get existing quest info
-            var existingQuest = await QuestCollection.GetQuestAsync(questId);
-            if (existingQuest == null) {
-                return false;
-            }
-
-            // Create a simple input dialog to edit quest name and description
-            var inputDialog = new QuestSaveDialog(existingQuest.Name, existingQuest.Description);
-            var result = await inputDialog.ShowDialog<QuestSaveResult?>(parentWindow);
-            
-            if (result == null) {
-                // User cancelled
-                return false;
-            }
-
-            return await QuestCollection.UpdateQuestAsync(questId, template, result.Name, result.Description);
-        }
-        catch (Exception ex) {
-            Console.WriteLine($"Error updating quest template: {ex.Message}");
+        // Get existing quest info
+        var existingQuest = await QuestCollection.GetQuestAsync(questId);
+        if (existingQuest == null) {
             return false;
         }
+
+        // Create a simple input dialog to edit quest name and description
+        var inputDialog = new QuestSaveDialog(existingQuest.Name, existingQuest.Description);
+        var result = await inputDialog.ShowDialog<QuestSaveResult?>(parentWindow);
+        
+        if (result == null) {
+            // User cancelled
+            return false;
+        }
+
+        return await QuestCollection.UpdateQuestAsync(questId, template, result.Name, result.Description);
     }
 
     /// <summary>

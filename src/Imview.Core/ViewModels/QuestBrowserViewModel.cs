@@ -163,12 +163,6 @@ public class QuestBrowserViewModel : ViewModelBase {
             IsLoading = true;
             StatusText = "Loading quests...";
 
-            // Check if database is configured
-            if (!DatabaseConfigService.IsDatabaseConfigured()) {
-                StatusText = "Database not configured - configure in Settings to browse quests";
-                return;
-            }
-
             var quests = await QuestCollection.GetAllQuestsAsync();
             
             _quests.Clear();

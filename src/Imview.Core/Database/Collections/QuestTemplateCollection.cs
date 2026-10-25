@@ -95,7 +95,7 @@ public static class QuestTemplateCollection {
             }
 
             // Copy all properties from the new template to the existing one
-            QuestCollection.CopyQuestTemplateProperties(questTemplate, existingTemplate);
+            CopyQuestTemplateProperties(questTemplate, existingTemplate);
             await session.SaveChangesAsync();
             return true;
         }
@@ -209,5 +209,48 @@ public static class QuestTemplateCollection {
             Console.WriteLine($"Error deleting quest template: {ex.Message}");
             return false;
         }
+    }
+
+    /// <summary>
+    /// Copies all properties from source QuestTemplate to target QuestTemplate
+    /// </summary>
+    /// <param name="source">Source template to copy from</param>
+    /// <param name="target">Target template to copy to</param>
+    private static void CopyQuestTemplateProperties(QuestTemplate source, QuestTemplate target) {
+        target.m_questName = source.m_questName;
+        target.m_questNameID = source.m_questNameID;
+        target.m_questTitle = source.m_questTitle;
+        target.m_questInfo = source.m_questInfo;
+        target.m_questPrep = source.m_questPrep;
+        target.m_questUnderway = source.m_questUnderway;
+        target.m_questComplete = source.m_questComplete;
+        target.m_startGoals = source.m_startGoals;
+        target.m_goals = source.m_goals;
+        target.m_startResults = source.m_startResults;
+        target.m_endResults = source.m_endResults;
+        target.m_requirements = source.m_requirements;
+        target.m_prepRequirements = source.m_prepRequirements;
+        target.m_pruneRequirements = source.m_pruneRequirements;
+        target.m_prepAlways = source.m_prepAlways;
+        target.m_clientTags = source.m_clientTags;
+        target.m_goalLogic = source.m_goalLogic;
+        target.m_questLevel = source.m_questLevel;
+        target.m_questRepeat = source.m_questRepeat;
+        target.m_onStartQuestScript = source.m_onStartQuestScript;
+        target.m_onEndQuestScript = source.m_onEndQuestScript;
+        target.m_dialogList = source.m_dialogList;
+        target.m_missionDoors = source.m_missionDoors;
+        target.m_dynaMods = source.m_dynaMods;
+        target.m_isHidden = source.m_isHidden;
+        target.m_outdated = source.m_outdated;
+        target.m_noQuestHelper = source.m_noQuestHelper;
+        target.m_mainline = source.m_mainline;
+        target.m_defaultDialogAnimation = source.m_defaultDialogAnimation;
+        target.m_skipQHAutoSelect = source.m_skipQHAutoSelect;
+        target.m_questEffectInfoList = source.m_questEffectInfoList;
+        target.m_forceInteraction = source.m_forceInteraction;
+        target.m_checkInventoryForCrafting = source.m_checkInventoryForCrafting;
+        target.m_playAsYourPetNPC = source.m_playAsYourPetNPC;
+        target.m_activityType = source.m_activityType;
     }
 }

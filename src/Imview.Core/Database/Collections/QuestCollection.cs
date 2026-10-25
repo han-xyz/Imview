@@ -21,6 +21,7 @@ modification, are permitted provided that the following conditions are met:
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Imcodec.ObjectProperty.TypeCache;
 using Imview.Core.Data;
@@ -45,6 +46,7 @@ public class QuestDocument {
 /// <summary>
 /// Quest templates and their metadata in the data pack (<see cref="WorldStoreProvider.Current"/>).
 /// A quest ID is <c>questtemplates/&lt;m_questName&gt;</c>; methods taking an ID also accept the bare quest name.
+/// Templates are handed out and stored as copies: an edit reaches the data pack only through an update or upsert.
 /// </summary>
 public static class QuestCollection {
 
@@ -68,9 +70,17 @@ public static class QuestCollection {
             return false;
         }
 
-        CopyQuestTemplateProperties(questTemplate, existing);
-        await store.SaveAsync(existing);
-        await SaveMetadataAsync(store, TemplateIdOf(QuestNameOf(questId)), existing, name, description);
+        var metadataId = TemplateIdOf(existing.m_questName);
+        if (!string.Equals(existing.m_questName, questTemplate.m_questName, StringComparison.OrdinalIgnoreCase)) {
+            if (await store.GetAsync<QuestTemplate>(questTemplate.m_questName) != null) {
+                throw new InvalidOperationException($"Cannot rename quest '{existing.m_questName}': a quest named '{questTemplate.m_questName}' already exists.");
+            }
+            // Renaming the stored record first makes the store move it in place, so the quest keeps its source file.
+            existing.m_questName = questTemplate.m_questName;
+            await store.SaveAsync(existing);
+        }
+        await store.SaveAsync(Detached(questTemplate));
+        await SaveMetadataAsync(store, metadataId, questTemplate.m_questName, name, description);
         return true;
     }
 
@@ -81,7 +91,7 @@ public static class QuestCollection {
             return null;
         }
 
-        return ToDocument(template, await store.GetAsync<QuestMetadata>(TemplateIdOf(template.m_questName)));
+        return ToDocument(Detached(template), await store.GetAsync<QuestMetadata>(TemplateIdOf(template.m_questName)));
     }
 
     /// <returns>All quests, most recently modified first</returns>
@@ -89,7 +99,7 @@ public static class QuestCollection {
         var store = WorldStoreProvider.Current;
         var documents = new List<QuestDocument>();
         foreach (var template in await store.GetAllAsync<QuestTemplate>()) {
-            documents.Add(ToDocument(template, await store.GetAsync<QuestMetadata>(TemplateIdOf(template.m_questName))));
+            documents.Add(ToDocument(Detached(template), await store.GetAsync<QuestMetadata>(TemplateIdOf(template.m_questName))));
         }
         return documents.OrderByDescending(q => q.ModifiedAt).ToList();
     }
@@ -124,15 +134,10 @@ public static class QuestCollection {
             questTemplate.m_questName = name;
         }
 
-        var existing = await store.GetAsync<QuestTemplate>(questTemplate.m_questName);
-        if (existing != null) {
-            CopyQuestTemplateProperties(questTemplate, existing);
-        }
-        var saved = existing ?? questTemplate;
-        await store.SaveAsync(saved);
+        await store.SaveAsync(Detached(questTemplate));
 
-        var questId = TemplateIdOf(saved.m_questName);
-        await SaveMetadataAsync(store, questId, saved, name, description);
+        var questId = TemplateIdOf(questTemplate.m_questName);
+        await SaveMetadataAsync(store, questId, questTemplate.m_questName, name, description);
         return questId;
     }
 
@@ -151,9 +156,9 @@ public static class QuestCollection {
         return true;
     }
 
-    private static async Task SaveMetadataAsync(IWorldStore store, string metadataId, QuestTemplate template, string name, string description) {
+    private static async Task SaveMetadataAsync(IWorldStore store, string metadataId, string questName, string name, string description) {
         var metadata = await store.GetAsync<QuestMetadata>(metadataId) ?? new QuestMetadata();
-        metadata.QuestTemplateId = TemplateIdOf(template.m_questName);
+        metadata.QuestTemplateId = TemplateIdOf(questName);
         metadata.Name = name;
         metadata.Description = description;
         metadata.ModifiedAt = DateTime.UtcNow;
@@ -172,51 +177,13 @@ public static class QuestCollection {
         ModifiedBy = metadata?.ModifiedBy ?? Environment.UserName
     };
 
+    private static QuestTemplate Detached(QuestTemplate template)
+        => JsonSerializer.Deserialize<QuestTemplate>(
+            JsonSerializer.SerializeToUtf8Bytes(template, SpiralJsonOptions.WriteOptions),
+            SpiralJsonOptions.Options)!;
+
     private static string QuestNameOf(string questId)
         => questId.StartsWith(TemplateIdPrefix, StringComparison.OrdinalIgnoreCase) ? questId[TemplateIdPrefix.Length..] : questId;
 
     private static string TemplateIdOf(string questName) => TemplateIdPrefix + questName;
-
-    /// <summary>
-    /// Copies all properties from source QuestTemplate to target QuestTemplate
-    /// </summary>
-    /// <param name="source">Source template to copy from</param>
-    /// <param name="target">Target template to copy to</param>
-    internal static void CopyQuestTemplateProperties(QuestTemplate source, QuestTemplate target) {
-        target.m_questName = source.m_questName;
-        target.m_questNameID = source.m_questNameID;
-        target.m_questTitle = source.m_questTitle;
-        target.m_questInfo = source.m_questInfo;
-        target.m_questPrep = source.m_questPrep;
-        target.m_questUnderway = source.m_questUnderway;
-        target.m_questComplete = source.m_questComplete;
-        target.m_startGoals = source.m_startGoals;
-        target.m_goals = source.m_goals;
-        target.m_startResults = source.m_startResults;
-        target.m_endResults = source.m_endResults;
-        target.m_requirements = source.m_requirements;
-        target.m_prepRequirements = source.m_prepRequirements;
-        target.m_pruneRequirements = source.m_pruneRequirements;
-        target.m_prepAlways = source.m_prepAlways;
-        target.m_clientTags = source.m_clientTags;
-        target.m_goalLogic = source.m_goalLogic;
-        target.m_questLevel = source.m_questLevel;
-        target.m_questRepeat = source.m_questRepeat;
-        target.m_onStartQuestScript = source.m_onStartQuestScript;
-        target.m_onEndQuestScript = source.m_onEndQuestScript;
-        target.m_dialogList = source.m_dialogList;
-        target.m_missionDoors = source.m_missionDoors;
-        target.m_dynaMods = source.m_dynaMods;
-        target.m_isHidden = source.m_isHidden;
-        target.m_outdated = source.m_outdated;
-        target.m_noQuestHelper = source.m_noQuestHelper;
-        target.m_mainline = source.m_mainline;
-        target.m_defaultDialogAnimation = source.m_defaultDialogAnimation;
-        target.m_skipQHAutoSelect = source.m_skipQHAutoSelect;
-        target.m_questEffectInfoList = source.m_questEffectInfoList;
-        target.m_forceInteraction = source.m_forceInteraction;
-        target.m_checkInventoryForCrafting = source.m_checkInventoryForCrafting;
-        target.m_playAsYourPetNPC = source.m_playAsYourPetNPC;
-        target.m_activityType = source.m_activityType;
-    }
 }

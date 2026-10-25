@@ -321,15 +321,6 @@ public static class QuestZipService {
 
     private static async Task<bool> SaveSingleQuestToDatabase(QuestTemplate template, Avalonia.Controls.Window parentWindow) {
         try {
-            // Check if database is configured first
-            var isConfigured = await DatabaseConfigService.EnsureDatabaseConfiguredAsync(parentWindow);
-            if (!isConfigured) {
-                MessageService.Error("Database configuration is required to upload quest.")
-                    .WithDuration(TimeSpan.FromSeconds(3))
-                    .Send();
-                return false;
-            }
-
             // Generate a descriptive name for the quest
             var questName = template.m_questName.OrIfEmpty(template.m_questTitle.OrIfEmpty($"Quest_FromPacket_{DateTime.Now:HHmmss}"));
 

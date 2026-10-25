@@ -141,15 +141,6 @@ public class PacketQuestViewModel : ViewModelBase {
     }
 
     private async Task<bool> SaveAllQuestsToDatabase(Avalonia.Controls.Window window) {
-        // Check if database is configured first
-        var isConfigured = await DatabaseConfigService.EnsureDatabaseConfiguredAsync(window);
-        if (!isConfigured) {
-            MessageService.Error("Database configuration is required to upload quests.")
-                .WithDuration(TimeSpan.FromSeconds(3))
-                .Send();
-            return false;
-        }
-
         MessageService.Info("Uploading quests to database...")
             .WithDuration(TimeSpan.FromSeconds(3))
             .Send();

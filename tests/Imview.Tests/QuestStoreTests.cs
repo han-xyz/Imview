@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Imcodec.ObjectProperty.TypeCache;
 using Imview.Core.Common;
 using Imview.Core.Data;
@@ -7,6 +8,7 @@ using Xunit;
 
 namespace Imview.Tests;
 
+[Collection(WorldStoreProviderCollection.Name)]
 public sealed class QuestStoreTests : IDisposable {
 
     private static readonly string FixtureRoot = Path.Combine(AppContext.BaseDirectory, "Fixtures", "spiraldb");
@@ -71,6 +73,56 @@ public sealed class QuestStoreTests : IDisposable {
     }
 
     [Fact]
+    public async Task Update_KeepsBehaviors() {
+        var incoming = ReadFixtureQuest("GH-HERO-C03-005");
+        incoming.m_behaviors = [new BehaviorTemplate { m_behaviorName = "TestBehavior" }];
+
+        Assert.True(await QuestCollection.UpdateQuestAsync("GH-HERO-C03-005", incoming, "Hero quest", ""));
+
+        Assert.Equal(["TestBehavior"], await StoredBehaviorNamesAsync("GH-HERO-C03-005"));
+    }
+
+    [Fact]
+    public async Task Upsert_KeepsBehaviors() {
+        var incoming = ReadFixtureQuest("GH-HERO-C03-005");
+        incoming.m_behaviors = [new BehaviorTemplate { m_behaviorName = "TestBehavior" }];
+
+        await QuestCollection.UpsertQuestAsync(incoming, "Hero quest", "");
+
+        Assert.Equal(["TestBehavior"], await StoredBehaviorNamesAsync("GH-HERO-C03-005"));
+    }
+
+    [Fact]
+    public async Task Update_RenamedQuest_RewritesSameFile() {
+        var templatesBefore = FilesIn("QuestTemplates");
+        var quest = await QuestCollection.GetQuestAsync("GH-HERO-C03-005");
+        quest!.Template.m_questName = "GH-HERO-RENAMED";
+
+        Assert.True(await QuestCollection.UpdateQuestAsync(quest.Id, quest.Template, "Renamed", ""));
+
+        Assert.Equal(templatesBefore, FilesIn("QuestTemplates"));
+        Assert.Null(await QuestCollection.GetQuestAsync("GH-HERO-C03-005"));
+        Assert.Equal("Renamed", (await QuestCollection.GetQuestAsync("GH-HERO-RENAMED"))?.Name);
+    }
+
+    [Fact]
+    public async Task GetQuest_EditsDoNotReachStoreUntilSaved() {
+        var quest = await QuestCollection.GetQuestAsync("GH-HERO-C03-005");
+        quest!.Template.m_questLevel = 42;
+
+        Assert.Equal(1, (await QuestCollection.GetQuestAsync("GH-HERO-C03-005"))?.Template.m_questLevel);
+        Assert.Equal(1, (await QuestCollection.GetAllQuestsAsync()).Single(q => q.Id == quest.Id).Template.m_questLevel);
+    }
+
+    [Fact]
+    public void Current_MissingFolder_Throws() {
+        ConfigurationManager.SetSetting(WorldStoreProvider.DataPackPathSetting, Path.Combine(_tempRoot, "missing"));
+        WorldStoreProvider.Reload();
+
+        Assert.Throws<InvalidOperationException>(() => WorldStoreProvider.Current);
+    }
+
+    [Fact]
     public async Task Delete_RemovesBoth() {
         var templatesBefore = FilesIn("QuestTemplates");
         var metadataBefore = FilesIn("QuestMetadatas");
@@ -102,6 +154,18 @@ public sealed class QuestStoreTests : IDisposable {
         Assert.Equal(templateFiles, (await QuestCollection.GetAllQuestsAsync()).Count);
         await QuestCollection.UpsertQuestAsync(new QuestTemplate { m_questName = "TEST-COUNT-001" }, "Counted", "");
         Assert.Equal(templateFiles + 1, (await QuestCollection.GetAllQuestsAsync()).Count);
+    }
+
+    private static QuestTemplate ReadFixtureQuest(string questName)
+        => JsonSerializer.Deserialize<QuestTemplate>(
+            File.ReadAllText(Path.Combine(FixtureRoot, "QuestTemplates", $"questtemplates_{questName}.json")),
+            SpiralJsonOptions.Options)!;
+
+    private async Task<List<string>> StoredBehaviorNamesAsync(string questName) {
+        var fresh = new SpiralDbFileStore(DataRoot);
+        await fresh.LoadAsync();
+        var stored = await fresh.GetAsync<QuestTemplate>(questName);
+        return [.. (stored?.m_behaviors ?? []).Select(b => b.m_behaviorName.ToString())];
     }
 
     private List<string> FilesIn(string directory)

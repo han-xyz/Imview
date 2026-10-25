@@ -232,17 +232,7 @@ public class MainWindowViewModel : ViewModelBase {
     /// <summary>
     /// Opens the quest browser in a new tab.
     /// </summary>
-    public async void ShowQuestBrowser() {
-        // Check if database is configured first
-        var isConfigured = await DatabaseConfigService.EnsureDatabaseConfiguredAsync(_mainWindow);
-        
-        if (!isConfigured) {
-            MessageService.Info("Database configuration required to browse remote quests.")
-                .WithDuration(TimeSpan.FromSeconds(3))
-                .Send();
-            return;
-        }
-
+    public void ShowQuestBrowser() {
         // Check if quest browser tab already exists
         var existingTab = TabManager.FindTabByContent<QuestBrowserViewModel>();
         if (existingTab != null) {

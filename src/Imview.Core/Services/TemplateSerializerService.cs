@@ -48,34 +48,22 @@ public static class TemplateSerializer {
     public static async Task<bool> SaveTemplateAsync(QuestTemplate template, Avalonia.Controls.Window parentWindow) {
         ArgumentNullException.ThrowIfNull(template);
 
-        try {
-            // Show save options dialog
-            var optionsDialog = new QuestSaveOptionsDialog();
-            var selectedOption = await optionsDialog.ShowDialog<QuestSaveOption>(parentWindow);
-            
-            return selectedOption switch {
-                QuestSaveOption.SaveLocal => await SaveTemplateToFileAsync(template, parentWindow),
-                QuestSaveOption.Upload => await SaveTemplateToDatabase(template, parentWindow),
-                QuestSaveOption.SaveBoth => await SaveTemplateToBoth(template, parentWindow),
-                _ => false // User cancelled
-            };
-        }
-        catch {
-            return false;
-        }
+        // Show save options dialog
+        var optionsDialog = new QuestSaveOptionsDialog();
+        var selectedOption = await optionsDialog.ShowDialog<QuestSaveOption>(parentWindow);
+        
+        return selectedOption switch {
+            QuestSaveOption.SaveLocal => await SaveTemplateToFileAsync(template, parentWindow),
+            QuestSaveOption.Upload => await SaveTemplateToDatabase(template, parentWindow),
+            QuestSaveOption.SaveBoth => await SaveTemplateToBoth(template, parentWindow),
+            _ => false // User cancelled
+        };
     }
 
     /// <summary>
     /// Saves a quest template to the database.
     /// </summary>
     private static async Task<bool> SaveTemplateToDatabase(QuestTemplate template, Avalonia.Controls.Window parentWindow) {
-        // Check if database is configured first
-        var isConfigured = await DatabaseConfigService.EnsureDatabaseConfiguredAsync(parentWindow);
-        
-        if (!isConfigured) {
-            return false;
-        }
-
         var questId = await DatabaseTemplateSerializer.SaveTemplateAsync(template, parentWindow);
         return !string.IsNullOrEmpty(questId);
     }
