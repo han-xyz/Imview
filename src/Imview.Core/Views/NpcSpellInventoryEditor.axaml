@@ -35,7 +35,7 @@
                           Foreground="Yellow" 
                           HorizontalAlignment="Center" 
                           FontSize="14" />
-                <TextBlock Text="You are authorized to edit world database NPC spell inventory data." 
+                <TextBlock Text="You are authorized to edit data pack NPC spell inventory data." 
                           Foreground="White" 
                           HorizontalAlignment="Center" 
                           Margin="0,4,0,0" 

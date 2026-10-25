@@ -126,7 +126,7 @@ namespace Imview.Core.ViewModels
                 }
                 else
                 {
-                    throw new Exception("Failed to save spell inventory to database");
+                    throw new Exception("Failed to save spell inventory to data pack");
                 }
             }
             catch (Exception ex)

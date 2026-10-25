@@ -18,191 +18,49 @@ modification, are permitted provided that the following conditions are met:
    this software without specific prior written permission.
 */
 
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Imview.Core.Database;
+using Imview.Core.Data;
 using Imview.Core.Models;
-using Raven.Client.Documents;
 
 namespace Imview.Core.Services;
 
 /// <summary>
-/// Service for querying NPC inventory data from the worlddata database
+/// NPC inventories in the data pack's NpcInventory folder (<see cref="WorldStoreProvider.Current"/>)
 /// </summary>
-public static class NpcInventoryService
-{
-    /// <summary>
-    /// Queries the database for inventory data for a specific NPC template ID
-    /// </summary>
-    /// <param name="templateId">The template ID of the NPC to find inventory for</param>
-    /// <returns>NpcInventory if found, null otherwise</returns>
-    public static async Task<NpcInventory?> GetNpcInventoryAsync(ulong templateId)
-    {
-        const string CollectionName = "NpcInventory";
-        
-        try
-        {
-            var store = WorldDatabase.Instance.Store;
-            if (store == null)
-            {
-                return null;
-            }
+public static class NpcInventoryService {
+    public static async Task<NpcInventory?> GetNpcInventoryAsync(ulong templateId) {
+        return await WorldStoreProvider.Current.GetAsync<NpcInventory>(templateId.ToString());
+    }
 
-            using var session = store.OpenAsyncSession();
-            
-            // Query for the NpcInventory by template ID in NpcInventory collection
-            var npcInventory = await session
-                .Query<NpcInventory>(collectionName: CollectionName)
-                .Where(ni => ni.TemplateID == templateId)
-                .FirstOrDefaultAsync();
-
-            return npcInventory;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[DEBUG] Error querying NPC inventory data: {ex.Message}");
-            Console.WriteLine($"[DEBUG] Stack trace: {ex.StackTrace}");
-            return null;
-        }
+    public static async Task<bool> HasNpcInventoryAsync(ulong templateId) {
+        return await GetNpcInventoryAsync(templateId) != null;
     }
 
     /// <summary>
-    /// Checks if inventory data exists for a specific NPC template ID
+    /// Saves an NPC inventory, replacing the items of the inventory with the same template ID
     /// </summary>
-    /// <param name="templateId">The template ID of the NPC to check for</param>
-    /// <returns>True if inventory data exists, false otherwise</returns>
-    public static async Task<bool> HasNpcInventoryAsync(ulong templateId)
-    {
-        try
-        {
-            var inventoryData = await GetNpcInventoryAsync(templateId);
-            return inventoryData != null;
+    public static async Task<bool> SaveNpcInventoryAsync(NpcInventory npcInventory) {
+        var store = WorldStoreProvider.Current;
+        var existing = await GetNpcInventoryAsync(npcInventory.TemplateID);
+        if (existing == null) {
+            existing = npcInventory;
+        } else {
+            existing.Inventory = npcInventory.Inventory;
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error checking NPC inventory existence: {ex.Message}");
-            return false;
-        }
+
+        await store.SaveAsync(existing);
+        return true;
     }
 
-    /// <summary>
-    /// Saves NPC inventory data to the database
-    /// </summary>
-    /// <param name="npcInventory">The NPC inventory data to save</param>
-    /// <returns>True if saved successfully, false otherwise</returns>
-    public static async Task<bool> SaveNpcInventoryAsync(NpcInventory npcInventory)
-    {
-        const string CollectionName = "NpcInventory";
-        
-        try
-        {
-            var store = WorldDatabase.Instance.Store;
-            if (store == null)
-            {
-                throw new Exception("Database connection not available.");
-            }
-            
-            using var session = store.OpenAsyncSession();
-            
-            // Query for existing inventory data
-            var existingInventory = await session
-                .Query<NpcInventory>(collectionName: CollectionName)
-                .Where(ni => ni.TemplateID == npcInventory.TemplateID)
-                .FirstOrDefaultAsync();
-            
-            if (existingInventory == null)
-            {
-                // Create new inventory entry
-                await session.StoreAsync(npcInventory);
-                
-                // Set collection metadata
-                var metadata = session.Advanced.GetMetadataFor(npcInventory);
-                metadata[Raven.Client.Constants.Documents.Metadata.Collection] = CollectionName;
-            }
-            else
-            {
-                // Update existing inventory
-                existingInventory.Inventory = npcInventory.Inventory;
-            }
-            
-            await session.SaveChangesAsync();
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error saving NPC inventory: {ex.Message}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
-            return false;
-        }
+    public static async Task<HashSet<ulong>> GetNpcTemplateIdsWithInventoriesAsync() {
+        var inventories = await WorldStoreProvider.Current.GetAllAsync<NpcInventory>();
+        return inventories.Select(ni => ni.TemplateID).ToHashSet();
     }
 
-    /// <summary>
-    /// Gets all NPC template IDs that have inventories in the database
-    /// </summary>
-    /// <returns>HashSet of template IDs that have inventory data</returns>
-    public static async Task<HashSet<ulong>> GetNpcTemplateIdsWithInventoriesAsync()
-    {
-        const string CollectionName = "NpcInventory";
-        
-        try
-        {
-            var store = WorldDatabase.Instance.Store;
-            if (store == null)
-            {
-                Console.WriteLine("World database is not available");
-                return new HashSet<ulong>();
-            }
-
-            using var session = store.OpenAsyncSession();
-            
-            var templateIds = await session
-                .Query<NpcInventory>(collectionName: CollectionName)
-                .Select(ni => ni.TemplateID)
-                .ToListAsync();
-
-            var result = new HashSet<ulong>(templateIds);
-            Console.WriteLine($"Found {result.Count} NPC template IDs with inventory data");
-            return result;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error querying NPC template IDs with inventories: {ex.Message}");
-            return new HashSet<ulong>();
-        }
-    }
-
-    /// <summary>
-    /// Gets all NPC inventory documents (for debugging/testing purposes)
-    /// </summary>
-    /// <returns>Array of all NpcInventory objects</returns>
-    public static async Task<NpcInventory[]> GetAllNpcInventoriesAsync()
-    {
-        const string CollectionName = "NpcInventory";
-        
-        try
-        {
-            var store = WorldDatabase.Instance.Store;
-            if (store == null)
-            {
-                Console.WriteLine("World database is not available");
-                return Array.Empty<NpcInventory>();
-            }
-
-            using var session = store.OpenAsyncSession();
-            
-            var results = await session
-                .Query<NpcInventory>(collectionName: CollectionName)
-                .ToArrayAsync();
-
-            Console.WriteLine($"Found {results.Length} NpcInventory documents in NpcInventory collection");
-            return results;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error querying all NPC inventories: {ex.Message}");
-            return Array.Empty<NpcInventory>();
-        }
+    public static async Task<NpcInventory[]> GetAllNpcInventoriesAsync() {
+        var inventories = await WorldStoreProvider.Current.GetAllAsync<NpcInventory>();
+        return inventories.ToArray();
     }
 }

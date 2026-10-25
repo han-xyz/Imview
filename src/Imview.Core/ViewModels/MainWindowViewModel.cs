@@ -24,6 +24,7 @@ using Imview.Core.ViewModels;
 using ReactiveUI;
 using Avalonia.Notification;
 using Imview.Core.Services;
+using Imview.Core.Data;
 using Avalonia.Controls;
 using System.Collections.Generic;
 using Imcodec.ObjectProperty.TypeCache;
@@ -376,11 +377,10 @@ public class MainWindowViewModel : ViewModelBase {
     /// Opens the Drop Table Editor in a new tab.
     /// </summary>
     public async void ShowDropTableEditor() {
-        // Check if database is configured first
-        var isConfigured = await DatabaseConfigService.EnsureDatabaseConfiguredAsync(_mainWindow);
+        var isConfigured = await DataPack.IsLoadedAsync();
         
         if (!isConfigured) {
-            MessageService.Info("Database configuration required to edit drop tables.")
+            MessageService.Info("Data pack configuration required to edit drop tables.")
                 .WithDuration(TimeSpan.FromSeconds(3))
                 .Send();
             return;
