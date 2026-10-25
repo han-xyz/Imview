@@ -87,10 +87,14 @@ public sealed partial class SpiralDbFileStore : IWorldStore {
     }
 
     public Task DeleteAsync<T>(string key) where T : class {
-        var path = RecordsOf<T>().Remove(key);
-        if (path is not null) {
-            File.Delete(path);
+        var records = RecordsOf<T>();
+        var record = records.Find(key);
+        if (record is null) {
+            return Task.CompletedTask;
         }
+
+        EnsureNoLinkInsideRoot(records.SourcePathOf(record)!);
+        File.Delete(records.Remove(key)!);
         return Task.CompletedTask;
     }
 
@@ -100,17 +104,17 @@ public sealed partial class SpiralDbFileStore : IWorldStore {
             : throw new ArgumentException($"{typeof(T).Name} is not a world store record type.");
 
     // A data pack comes from other people's commits: a committed symbolic link would make a save
-    // write to wherever the link points.
+    // or delete reach wherever the link points.
     private void EnsureNoLinkInsideRoot(string path) {
         var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(_root));
         var fullPath = Path.GetFullPath(path);
         if (!fullPath.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal)) {
-            throw new IOException($"Refusing to write {fullPath}: it is outside the data pack folder {root}.");
+            throw new IOException($"Refusing to change {fullPath}: it is outside the data pack folder {root}.");
         }
 
         for (var current = fullPath; current.Length > root.Length; current = Path.GetDirectoryName(current)!) {
             if (new FileInfo(current).LinkTarget is not null) {
-                throw new IOException($"Refusing to write {fullPath}: {current} is a symbolic link.");
+                throw new IOException($"Refusing to change {fullPath}: {current} is a symbolic link.");
             }
         }
     }

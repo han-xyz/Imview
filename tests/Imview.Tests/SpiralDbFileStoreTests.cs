@@ -156,6 +156,23 @@ public sealed class SpiralDbFileStoreTests : IDisposable {
         Assert.Equal([outsideFile], Directory.GetFiles(Path.Combine(outside, "DropTables")));
     }
 
+    [SymlinkFact]
+    public async Task Delete_SymlinkedCategoryDir_Refused() {
+        var pack = Path.Combine(_tempRoot, "pack");
+        var outside = Path.Combine(_tempRoot, "outside");
+        CopyFixturesTo(outside);
+        Directory.CreateDirectory(pack);
+        Directory.CreateSymbolicLink(Path.Combine(pack, "DropTables"), Path.Combine(outside, "DropTables"));
+        var outsideFile = Path.Combine(outside, "DropTables", "droptables_test.json");
+        var store = new SpiralDbFileStore(pack);
+        await store.LoadAsync();
+
+        await Assert.ThrowsAsync<IOException>(() => store.DeleteAsync<DropTable>("TEST"));
+
+        Assert.True(File.Exists(outsideFile));
+        Assert.NotNull(await store.GetAsync<DropTable>("TEST"));
+    }
+
     [Fact]
     public async Task Save_New_UsesTypeKeyName() {
         var store = new SpiralDbFileStore(_tempRoot);
