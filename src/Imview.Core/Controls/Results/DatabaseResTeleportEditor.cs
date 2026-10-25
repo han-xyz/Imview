@@ -25,15 +25,15 @@ using Imcodec.ObjectProperty.TypeCache;
 using Imview.Core.Common.Constants;
 using Imview.Core.Controls.Base;
 using Imview.Core.Services;
-using Imview.Core.Database;
+using Imview.Core.Data;
 using Imview.Core.Models;
 using ReactiveUI;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Raven.Client.Documents;
 using Imview.Core.Common.Extensions;
 
 namespace Imview.Core.Controls.Results;
@@ -55,6 +55,7 @@ public class DatabaseResTeleportEditor : EditorWindowBase<ResTeleport>
     private readonly ComboBox _teleportTypeComboBox;
     private readonly NumericUpDown _transitionIdInput;
     private readonly bool _isNew;
+    private List<string> _availableZones = [];
 
     /// <summary>
     /// Gets whether the data was successfully saved to the database
@@ -315,6 +316,7 @@ public class DatabaseResTeleportEditor : EditorWindowBase<ResTeleport>
             // Update the ComboBox on the UI thread
             Avalonia.Threading.Dispatcher.UIThread.Invoke(() =>
             {
+                _availableZones = zones;
                 _destinationZoneComboBox.ItemsSource = zones;
                 _destinationZoneComboBox.IsEnabled = true;
                 
@@ -512,9 +514,9 @@ public class DatabaseResTeleportEditor : EditorWindowBase<ResTeleport>
                 return null;
             }
                 
-            if (!float.TryParse(parts[0].Trim(), out float x) ||
-                !float.TryParse(parts[1].Trim(), out float y) ||
-                !float.TryParse(parts[2].Trim(), out float z))
+            if (!float.TryParse(parts[0].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float x) ||
+                !float.TryParse(parts[1].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float y) ||
+                !float.TryParse(parts[2].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float z))
             {
                 Console.WriteLine($"Failed to parse coordinates: x={parts[0]}, y={parts[1]}, z={parts[2]}");
                 return null;
@@ -524,7 +526,7 @@ public class DatabaseResTeleportEditor : EditorWindowBase<ResTeleport>
             float direction = 0f;
             if (parts.Length >= 4)
             {
-                float.TryParse(parts[3].Trim(), out direction);
+                float.TryParse(parts[3].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out direction);
             }
             
             Console.WriteLine($"Looking for coordinates: x={x}, y={y}, z={z}, direction={direction} (tolerance=0.1)");
@@ -578,8 +580,7 @@ public class DatabaseResTeleportEditor : EditorWindowBase<ResTeleport>
                 
                 if (location != null)
                 {
-                    // Format coordinates as "x,y,z,direction"
-                    var coordinates = $"{location.m_location.X},{location.m_location.Y},{location.m_location.Z},{location.m_direction}";
+                    var coordinates = ZoneTransferService.FormatDestinationLoc(location.m_location.X, location.m_location.Y, location.m_location.Z, location.m_direction);
                     
                     Avalonia.Threading.Dispatcher.UIThread.Invoke(() =>
                     {
@@ -601,7 +602,7 @@ public class DatabaseResTeleportEditor : EditorWindowBase<ResTeleport>
         try 
         {
             // Validate input
-            if (_destinationZoneComboBox.SelectedItem is not string destinationZone || string.IsNullOrWhiteSpace(destinationZone))
+            if (_destinationZoneComboBox.SelectedItem is not string destinationZone || !_availableZones.Contains(destinationZone))
             {
                 MessageService.Error("Please select a destination zone.").Send();
                 return;
@@ -610,6 +611,12 @@ public class DatabaseResTeleportEditor : EditorWindowBase<ResTeleport>
             if (string.IsNullOrWhiteSpace(_destinationLocInput.Text))
             {
                 MessageService.Error("Please enter destination coordinates or select a location.").Send();
+                return;
+            }
+
+            if (ParseDestinationLoc(_destinationLocInput.Text) is not { } coordinates)
+            {
+                MessageService.Error("Destination coordinates must be x,y,z or x,y,z,yaw, with '.' as the decimal separator.").Send();
                 return;
             }
             
@@ -621,81 +628,65 @@ public class DatabaseResTeleportEditor : EditorWindowBase<ResTeleport>
                 MessageService.Info($"Zone '{destinationZone}' data could not be loaded, but coordinates can still be saved manually.\n\nNote: Location validation is not available for this zone.").Send();
             }
             
-            // Update the result object
-            _result.m_destinationLoc = _destinationLocInput.Text?.Trim() ?? string.Empty;
-            _result.m_destinationZone = destinationZone;
-            _result.m_exitTeleporter = (byte)(_exitTeleporterInput.Value ?? 0);
-            _result.m_teleporterTag = (byte)(_teleporterTagInput.Value ?? 0);
-            _result.m_transitionID = (byte)(_transitionIdInput.Value ?? 0);
+            var edited = WorldRecordCopy.Detached(_result);
+            edited.m_destinationLoc = ZoneTransferService.FormatDestinationLoc(coordinates);
+            edited.m_destinationZone = destinationZone;
+            edited.m_exitTeleporter = (byte)(_exitTeleporterInput.Value ?? 0);
+            edited.m_teleporterTag = (byte)(_teleporterTagInput.Value ?? 0);
+            edited.m_transitionID = (byte)(_transitionIdInput.Value ?? 0);
             
-            // Show saving progress
-            MessageService.Info("Saving teleport data to database...").Send();
+            MessageService.Info("Saving teleport data to the data pack...").Send();
             
-            // Save to database using the same approach as DragonZoneTool
-            await SaveTeleportToDatabase();
-            
+            await SaveTeleportToDataPack(edited);
+
+            _result.m_destinationLoc = edited.m_destinationLoc;
+            _result.m_destinationZone = edited.m_destinationZone;
+            _result.m_exitTeleporter = edited.m_exitTeleporter;
+            _result.m_teleporterTag = edited.m_teleporterTag;
+            _result.m_transitionID = edited.m_transitionID;
             WasSaved = true;
             
-            MessageService.Info($"Teleport data saved successfully to database.\n\nZone: {_zoneName}\nTrigger: {_triggerName}\nDestination: {_result.m_destinationZone}").Send();
+            MessageService.Info($"Teleport data saved successfully to the data pack.\n\nZone: {_zoneName}\nTrigger: {_triggerName}\nDestination: {_result.m_destinationZone}").Send();
             
             Close();
         } 
         catch (Exception ex) 
         {
-            MessageService.Error($"Failed to save teleport to database: {ex.Message}").Send();
+            MessageService.Error($"Failed to save teleport to the data pack: {ex.Message}").Send();
         }
     }
     
-    /// <summary>
-    /// Saves the teleport data to the database using the same approach as DragonZoneTool
-    /// </summary>
-    private async Task SaveTeleportToDatabase()
+    private static float[]? ParseDestinationLoc(string text)
     {
-        var store = WorldDatabase.Instance.Store;
-        if (store == null)
+        var parts = text.Split(',');
+        if (parts.Length is not (3 or 4))
+            return null;
+
+        var coordinates = new float[parts.Length];
+        for (var i = 0; i < parts.Length; i++)
         {
-            throw new Exception("Database connection not available.");
+            if (!float.TryParse(parts[i].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out coordinates[i]))
+                return null;
         }
-        
-        using var session = store.OpenAsyncSession();
-        
-        // Query for existing zone data
-        var zoneData = await session
-            .Query<WizardZoneData>(collectionName: "ZoneTransfer")
-            .Where(zd => zd.ZoneName == _zoneName)
-            .FirstOrDefaultAsync();
-        
-        // If no zone data exists, create new one
-        if (zoneData == null)
+        return coordinates;
+    }
+
+    private async Task SaveTeleportToDataPack(ResTeleport teleport)
+    {
+        var zoneData = await ZoneTransferService.GetZoneTransferAsync(_zoneName)
+            ?? new WizardZoneData { ZoneName = _zoneName };
+
+        var index = zoneData.Teleports.FindIndex(t => t.TriggerName == _triggerName);
+        var entry = new WizardTeleportData { TriggerName = _triggerName, Teleport = teleport };
+        if (index >= 0)
         {
-            zoneData = new WizardZoneData
-            {
-                ZoneName = _zoneName,
-                Teleports = new List<WizardTeleportData>()
-            };
-            
-            await session.StoreAsync(zoneData);
-            
-            // Set collection metadata
-            var metadata = session.Advanced.GetMetadataFor(zoneData);
-            metadata[Raven.Client.Constants.Documents.Metadata.Collection] = "ZoneTransfer";
+            zoneData.Teleports[index] = entry;
         }
-        
-        // Remove existing teleport for this trigger if it exists
-        var existingTeleport = zoneData.Teleports
-            .FirstOrDefault(t => t.TriggerName == _triggerName);
-        if (existingTeleport != null)
+        else
         {
-            zoneData.Teleports.Remove(existingTeleport);
+            zoneData.Teleports.Add(entry);
         }
-        
-        // Add the updated teleport data
-        zoneData.Teleports.Add(new WizardTeleportData
-        {
-            TriggerName = _triggerName,
-            Teleport = _result
-        });
-        
-        await session.SaveChangesAsync();
+
+        await ZoneTransferService.SaveZoneTransferAsync(zoneData);
     }
 }

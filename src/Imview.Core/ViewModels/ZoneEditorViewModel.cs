@@ -3624,6 +3624,12 @@ if (_overlayCanvas == null || _scrollViewer == null)
             return;
         }
 
+        if (!await DataPack.IsLoadedAsync())
+        {
+            MessageService.Error("Data pack not available. Please ensure a data pack folder is configured and accessible.").Send();
+            return;
+        }
+
         try
         {
             var zoneDataService = new ZoneDataService();
@@ -3643,7 +3649,7 @@ if (_overlayCanvas == null || _scrollViewer == null)
 
             if (editor.WasSaved)
             {
-                MessageService.Info("Teleport data saved to database.").Send();
+                MessageService.Info("Teleport data saved to the data pack.").Send();
                 wrapper.RefreshFromDatabase();
             }
         }
@@ -3673,6 +3679,12 @@ if (_overlayCanvas == null || _scrollViewer == null)
             return;
         }
 
+        if (!await DataPack.IsLoadedAsync())
+        {
+            MessageService.Error("Data pack not available. Please ensure a data pack folder is configured and accessible.").Send();
+            return;
+        }
+
         try
         {
             var zoneDataService = new ZoneDataService();
@@ -3692,7 +3704,7 @@ if (_overlayCanvas == null || _scrollViewer == null)
 
             if (editor.WasSaved)
             {
-                MessageService.Info("Teleport data created in database.").Send();
+                MessageService.Info("Teleport data created in the data pack.").Send();
                 wrapper.RefreshFromDatabase();
             }
         }
