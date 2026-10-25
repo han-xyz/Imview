@@ -73,7 +73,8 @@ that setting at your fork, then:
    rewritten in place, and a new record is written as `<folder-lowercase>_<key>.json`.
 2. Commit the changed files in your spiraldb checkout.
 3. Push to your fork.
-4. Restart Imlight. It fetches the fork when it boots.
+4. Restart Imlight. It fetches the fork when it boots, as long as `SpiralDBAutoFetch` is true, and
+   it fetches only the branch named by `SpiralDBBranch` (default `main`), so push to that branch.
 
 The folders Imview reads and writes are `QuestTemplates`, `QuestMetadatas`, `DropTables`,
 `NpcInventory`, `NpcSpellInventory`, `CreatureSpellbook` and `ZoneTransfer`.

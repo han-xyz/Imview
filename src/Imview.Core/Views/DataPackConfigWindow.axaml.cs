@@ -32,6 +32,12 @@ public partial class DataPackConfigWindow : Window {
 
     private void OnSaveClick(object? sender, RoutedEventArgs e) {
         var path = PathBox.Text?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(path)) {
+            ErrorText.Text = "Choose an existing folder.";
+            return;
+        }
+
+        path = Path.GetFullPath(path);
         if (!Directory.Exists(path)) {
             ErrorText.Text = "Choose an existing folder.";
             return;

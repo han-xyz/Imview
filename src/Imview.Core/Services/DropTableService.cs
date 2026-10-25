@@ -80,7 +80,8 @@ public class DropTableService {
 
     /// <summary>
     /// Saves a copy of the drop table, replacing the stored table with the same name; when the table was
-    /// renamed from <paramref name="previousName"/>, the table under the old name is deleted after the save
+    /// renamed from <paramref name="previousName"/>, the table under the old name is deleted after the save.
+    /// A rename onto the name of another stored table throws <see cref="InvalidOperationException"/>.
     /// </summary>
     public async Task<bool> UpdateDropTableAsync(DropTable dropTable, string? previousName = null) {
         if (dropTable == null) {
@@ -92,7 +93,14 @@ public class DropTableService {
         }
 
         var store = WorldStoreProvider.Current;
-        if (await store.GetAsync<DropTable>(dropTable.Name) == null) {
+        var isRename = !string.IsNullOrWhiteSpace(previousName)
+            && !string.Equals(previousName, dropTable.Name, StringComparison.OrdinalIgnoreCase);
+        var stored = await store.GetAsync<DropTable>(dropTable.Name);
+        if (isRename && stored != null) {
+            throw new InvalidOperationException($"Cannot rename drop table '{previousName}': a drop table named '{dropTable.Name}' already exists.");
+        }
+
+        if (stored == null) {
             dropTable.CreatedAt = DateTime.UtcNow;
             dropTable.CreatedBy = Environment.UserName;
         }
@@ -101,10 +109,8 @@ public class DropTableService {
         dropTable.ModifiedBy = Environment.UserName;
         await store.SaveAsync(WorldRecordCopy.Detached(dropTable));
 
-        if (!string.IsNullOrWhiteSpace(previousName)
-            && !string.Equals(previousName, dropTable.Name, StringComparison.OrdinalIgnoreCase)
-            && await store.GetAsync<DropTable>(previousName) != null) {
-            await store.DeleteAsync<DropTable>(previousName);
+        if (isRename && await store.GetAsync<DropTable>(previousName!) != null) {
+            await store.DeleteAsync<DropTable>(previousName!);
         }
         return true;
     }

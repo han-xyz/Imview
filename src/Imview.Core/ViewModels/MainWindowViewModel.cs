@@ -299,7 +299,7 @@ public class MainWindowViewModel : ViewModelBase {
     private static async Task ShowDataPackLoadReportAsync() {
         WorldStoreLoadReport report;
         try {
-            report = await WorldStoreProvider.Current.LoadAsync();
+            report = await Task.Run(() => WorldStoreProvider.Current.LoadAsync());
         }
         catch (Exception ex) {
             MessageService.Error($"Data pack could not be loaded: {ex.Message}")
